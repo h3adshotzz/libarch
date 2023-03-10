@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "util.h": "c",
+        "ios": "c",
+        "utils.h": "c"
+    }
+}

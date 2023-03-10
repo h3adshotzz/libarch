@@ -23,3 +23,10 @@ add_executable(libarch-version)
 target_sources(libarch-version PUBLIC libarch-version.c)
 target_include_directories(libarch-version PUBLIC ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(libarch-version libarch)
+
+## Libarch Debug Tool
+##
+add_executable(libarch-debug)
+target_sources(libarch-debug PUBLIC libarch-debug.c)
+target_include_directories(libarch-debug PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(libarch-debug libarch)
