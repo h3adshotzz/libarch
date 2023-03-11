@@ -16,6 +16,13 @@
 #include <stdio.h>
 #include "utils.h"
 
+/**
+ *  AArch64 Reference Manual shared/functions/common/
+ * 
+ *  Some of these are taken from 
+ *      https://github.com/xerub/macho/blob/master/patchfinder64.c
+ */
+
 unsigned int 
 select_bits (unsigned int val, unsigned int start, unsigned int end)
 {
@@ -29,33 +36,83 @@ sign_extend (unsigned int bits, int numbits)
 {
     if(bits & (1 << (numbits - 1)))
         return bits | ~((1 << numbits) - 1);
-
     return bits;
 }
 
-int decode_bit_masks
-(unsigned int N, unsigned int imms, unsigned int immr,
-        int immediate, unsigned long *out)
+unsigned int 
+highest_set_bit (unsigned int n, uint32_t imm)
 {
-    unsigned int num = (N << 6) | (~imms & 0x3f);
-    unsigned int len = HighestSetBit(num, 7);
+    for (int i = n - 1; i >= 0; i--)
+        if (imm & (1 << i)) return i;
+    return -1;
+}
 
-    if(len < 1)
-        return -1;
+unsigned int
+zero_extend_ones (unsigned M, unsigned N)
+{
+    (void) N;
+    return ((uint64_t) 1 << M) - 1;
+}
 
-    unsigned int levels = Ones(len, 0);
+unsigned int
+ror_zero_extend_ones (unsigned M, unsigned N, unsigned R)
+{
+    uint64_t val = zero_extend_ones (M, N);
+    if (R == 0) return val;
+    return ((val >> R) & (((uint64_t)1 << (N - R)) - 1)) | ((val & (((uint64_t)1 << R) - 1)) << (N - R));
+}
 
-    if(immediate && ((imms & levels) == levels))
-        return -1;
+unsigned int
+replicate (unsigned int val, unsigned bits)
+{
+    unsigned int ret = val;
+    for (unsigned shift = bits; shift < 64; shift += bits)
+        ret |= (val << shift);
+    return ret;
+}
 
-    unsigned int S = imms & levels;
-    unsigned int R = immr & levels;
-    unsigned int esize = 1 << len;
+unsigned int
+decode_bitmasks (unsigned immN, unsigned imms, unsigned immr, int immediate, uint64_t *newval)
+{
+    unsigned levels, S, R, esize;
+	int len = highest_set_bit (7, (immN << 6) | (~imms & 0x3F));
+	if (len < 1)
+		return -1;
 
-    *out = replicate(RORZeroExtendOnes(S + 1, esize, R), sizeof(unsigned long) * CHAR_BIT, esize);
+	levels = zero_extend_ones (len, 6);
+	if (immediate && (imms & levels) == levels)
+		return -1;
+
+	S = imms & levels;
+	R = immr & levels;
+	esize = 1 << len;
+	*newval = replicate (ror_zero_extend_ones (S + 1, esize, R), esize);
+	return 0;
+}
+
+int 
+move_wide_preferred (unsigned int sf, unsigned int immN, unsigned int immr, unsigned int imms)
+{
+    int width = sf == 1 ? 64 : 32;
+    unsigned int combined = (immN << 6) | imms;
+
+    if(sf == 1 && (combined >> 6) != 1)
+        return 0;
+
+    if(sf == 0 && (combined >> 5) != 0)
+        return 0;
+
+    if(imms < 16)
+        return (-immr % 16) <= (15 - imms);
+
+    if(imms >= (width - 15))
+        return (immr % 16) <= (imms - (width - 15));
 
     return 0;
 }
+
+
+/* --------------------------------------------------------------------------- */
 
 void
 base10 (unsigned int hex_value, int width)

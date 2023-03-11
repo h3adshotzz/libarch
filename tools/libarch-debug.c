@@ -94,15 +94,9 @@ int main (int argc, char *argv[])
             LIBARCH_BUILD_VERSION, __TIMESTAMP__, LIBARCH_SOURCE_VERSION, LIBARCH_BUILD_TYPE, BUILD_ARCH_CAP, BUILD_ARCH);
 
     // 41880091 41880011
-    instruction_t *test = libarch_instruction_create (0x91008041, 0);
-    instruction_t *test2 = libarch_instruction_create (0x11008041, 0);
+    instruction_t *test = libarch_instruction_create (0xf27e005f, 0);
     libarch_disass (&test);
-    libarch_disass (&test2);
-
-    
-    printf ("%d: %s\n", test->group, test->parsed);
-    printf ("%d: %s\n\n", test2->group, test2->parsed);
-
+    printf ("test: %s\n", test->parsed);
 
     /* create the file descriptor */
     int fd = open (argv[1], O_RDONLY);

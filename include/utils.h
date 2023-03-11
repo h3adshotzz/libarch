@@ -24,6 +24,23 @@
 #include <stdarg.h>
 #include <sys/mman.h>
 
+
+unsigned int
+sign_extend (unsigned int bits, int numbits);
+unsigned int 
+highest_set_bit (unsigned int n, uint32_t imm);
+unsigned int
+zero_extend_ones (unsigned M, unsigned N);
+unsigned int
+ror_zero_extend_ones (unsigned M, unsigned N, unsigned R);
+unsigned int
+replicate (unsigned int val, unsigned bits);
+unsigned int
+decode_bitmasks (unsigned immN, unsigned imms, unsigned immr, int immediate, uint64_t *newval);
+int 
+move_wide_preferred (unsigned int sf, unsigned int immN, unsigned int immr, unsigned int imms);
+
+
 unsigned int 
 select_bits (unsigned int val, unsigned int start, unsigned int end);
 unsigned int
