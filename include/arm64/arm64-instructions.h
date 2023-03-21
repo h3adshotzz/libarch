@@ -33,7 +33,8 @@
 
 typedef enum arm64_instr_t
 {
-    ARM64_INSTRUCTION_ADC = 0,
+    ARM64_INSTRUCTION_UNK = 0,
+    ARM64_INSTRUCTION_ADC,
     ARM64_INSTRUCTION_ADCS,
     ARM64_INSTRUCTION_ADD,
     ARM64_INSTRUCTION_ADDG,
@@ -807,6 +808,7 @@ typedef enum arm64_instr_t
 
 static const char *A64_INSTRUCTIONS_STR[] = 
 {
+    "unk",
     "adc",
     "adcs",
     "add",

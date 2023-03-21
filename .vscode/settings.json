@@ -2,6 +2,7 @@
     "files.associations": {
         "util.h": "c",
         "ios": "c",
-        "utils.h": "c"
+        "utils.h": "c",
+        "__locale": "c"
     }
 }

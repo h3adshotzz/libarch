@@ -111,6 +111,60 @@ move_wide_preferred (unsigned int sf, unsigned int immN, unsigned int immr, unsi
     return 0;
 }
 
+unsigned long
+ones (int len, int N)
+{
+    (void) N;
+    unsigned long ret = 0;
+
+    for (int i = len-1; i >= 0; i--)
+        ret |= ((unsigned long) 1 << i);
+    return ret;
+}
+
+int 
+is_zero (unsigned N)
+{
+    return (N == 0);
+}
+
+int
+is_ones (unsigned N)
+{
+    return (N == ones (N, 0));
+}
+
+int
+UInt (unsigned N)
+{
+    int result = 0;
+    for (int i = 0; i < N-1; i++)
+        if (((N & (1<<1)) >> 1) == 1) result = result + 2^i;
+    return result;
+}
+
+int
+BFXPreferred (unsigned sf, unsigned uns, unsigned imms, unsigned immr)
+{
+    // must not match UBFIZ/SBFIX alias
+    if (imms < immr) return 0;
+
+    // must not match LSR/ASR/LSL alias
+    if (imms == select_bits (sf, 0, 31)) return 0;
+
+    // must not match UXTx/SXTx alias
+    if (immr == 0) {
+        // must not match 32-bit UXT[BH] or SXT[BH]
+        if (sf == 0 && (imms == 0b000111 || imms == 0b001111))
+            return 0;
+        // must not match 64-bit SXT[BHW]
+        if ((select_bits (sf, 0, uns) == 0b10) && (imms == 0b000111 || imms == 0b001111 || imms == 0b011111))
+            return 0;
+    }
+
+    // must be UBFX/SBFX alias
+    return 1;
+}
 
 /* --------------------------------------------------------------------------- */
 

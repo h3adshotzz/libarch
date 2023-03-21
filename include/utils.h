@@ -24,6 +24,21 @@
 #include <stdarg.h>
 #include <sys/mman.h>
 
+#define _SET_64(sz, regs, len) \
+    do { \
+        sz = 64; \
+        regs = A64_REGISTERS_GP_64; \
+        len = A64_REGISTERS_GP_64_LEN; \
+    } while (0) \
+
+#define _SET_32(sz, regs, len) \
+    do { \
+        sz = 32; \
+        regs = A64_REGISTERS_GP_32; \
+        len = A64_REGISTERS_GP_32_LEN; \
+    } while (0) \
+
+
 
 unsigned int
 sign_extend (unsigned int bits, int numbits);
@@ -39,6 +54,16 @@ unsigned int
 decode_bitmasks (unsigned immN, unsigned imms, unsigned immr, int immediate, uint64_t *newval);
 int 
 move_wide_preferred (unsigned int sf, unsigned int immN, unsigned int immr, unsigned int imms);
+unsigned long
+ones (int len, int N);
+int 
+is_zero (unsigned N);
+int
+is_ones (unsigned N);
+int
+UInt (unsigned N);
+int
+BFXPreferred (unsigned sf, unsigned uns, unsigned imms, unsigned immr);
 
 
 unsigned int 

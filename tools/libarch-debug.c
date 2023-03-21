@@ -58,22 +58,26 @@ void instruction_debug (instruction_t *instr, int show_fields)
     printf ("Parsed:            %s\n", instr->parsed);
     printf ("Opcode:            0x%08x\n",      instr->opcode);
     printf ("Decode Group:      %d\n",          instr->group);
-    printf ("Instruction Type:  %d\n",          instr->type);
+    printf ("Instruction Type:  %s (%d)\n",     A64_INSTRUCTIONS_STR[instr->type], instr->type);
     printf ("Address:           0x%016x\n",     instr->addr);
+    base10 (instr->opcode, 31);
 
     printf ("Operands:          %d\n", instr->operands_len);
     for (int i = 0; i < instr->operands_len; i++) {
         operand_t *op = &instr->operands[i];
         
-        printf ("\t[%d]: type:          %d\n", i, op->op_type);
+        printf ("\t[%d]: type:          ", i);
         if (op->op_type == ARM64_OPERAND_TYPE_REGISTER) {
+            printf ("REGISTER (%d)\n", op->op_type);
             printf ("\t[%d]: reg:           %d\n", i, op->reg);
             printf ("\t[%d]: reg_size:      %d\n", i, op->reg_size);
             printf ("\t[%d]: reg_type:      %d\n", i, op->reg_type);
         } else if (op->op_type == ARM64_OPERAND_TYPE_IMMEDIATE) {
+            printf ("IMMEDIATE (%d)\n", op->op_type);
             printf ("\t[%d]: imm_type:      %d\n", i, op->imm_type);
             printf ("\t[%d]: imm_bits:      %d\n", i, op->imm_bits);
         } else if (op->op_type == ARM64_OPERAND_TYPE_SHIFT) {
+            printf ("SHIFT (%d)\n", op->op_type);
             printf ("\t[%d]: shift_type:    %d\n", i, op->shift_type);
             printf ("\t[%d]: shift:         %d\n", i, op->shift);
         }
@@ -82,9 +86,43 @@ void instruction_debug (instruction_t *instr, int show_fields)
     if (show_fields) {
         printf ("Fields:            %d\n", instr->fields_len);
         for (int i = 0; i < instr->fields_len; i++) {
-            int f = &instr->fields[i];
+            int f = instr->fields[i];
             printf ("\t[%d]: field:         %d\n", i, f);
         }
+    }
+    printf ("\n");
+}
+
+void create_string (instruction_t *instr)
+{
+    printf ("instruction: %s\t", A64_INSTRUCTIONS_STR[instr->type]);
+    for (int i = 0; i < instr->operands_len; i++) {
+        operand_t *op = &instr->operands[i];
+
+        if (op->op_type == ARM64_OPERAND_TYPE_REGISTER) {
+            char *reg_type = "x";
+            if (op->reg_size == 32) reg_type = "w";
+
+            if (op->reg_type == ARM64_REGISTER_TYPE_GENERAL)
+                printf ("%s%d", reg_type, op->reg);
+        } else if (op->op_type == ARM64_OPERAND_TYPE_IMMEDIATE) {
+            printf ("#0x%lx", op->imm_bits);
+        }
+        printf (" ");
+    }
+    printf ("\n");
+}
+
+void disassemble (uint32_t *data, uint32_t len, uint64_t base)
+{
+    for (int i = 0; i < len; i++) {
+        if (data[i] == NULL) continue;
+        instruction_t *in = libarch_instruction_create (data[i], base);
+
+        libarch_disass (&in);
+
+        instruction_debug (in, 0);
+        printf ("0x%016llx  %08x\t%s\n", in->addr, in->opcode, in->parsed);
     }
 }
 
@@ -93,50 +131,63 @@ int main (int argc, char *argv[])
     printf (BLUE "\n    LIBARCH Version %s: %s; root:%s/%s_%s %s\n\n" RESET,
             LIBARCH_BUILD_VERSION, __TIMESTAMP__, LIBARCH_SOURCE_VERSION, LIBARCH_BUILD_TYPE, BUILD_ARCH_CAP, BUILD_ARCH);
 
-    // 41880091 41880011
-    instruction_t *test = libarch_instruction_create (0xf27e005f, 0);
-    libarch_disass (&test);
-    printf ("test: %s\n", test->parsed);
+    if (argc == 2) {
+        uint32_t *opcode[] = { strtol(argv[1], NULL, 16), NULL };
+        disassemble (opcode, 1, 0);
+    } else if (argc < 3) {
+    
+        // SBFM tests
+        uint32_t *sbfm_tests1[] =
+        {
+            0x91000863,         // add      x3, x3, #2
+            0x130c7ce3,         // asr      w3, w7, #0xc
+            NULL
+        };
+        uint32_t *sbfm_tests2[] =
+        {
+            0x936e1ff4,         // sbfiz    x20, xzr, #18, #8
+            0x9357c4c4,         // sbfx     x4, x6, #23, #27
+            NULL
+        };
+        uint32_t *sbfm_tests3[] =
+        {
+            0x93401c83,         // sxtb     x3, w4
+            0x93403c83,         // sxth     x3, w4
+            0x93407c83,         // sxtw     x3, w4
+            NULL
+        };
+    
+        disassemble (sbfm_tests1, 4, 0);
+        disassemble (sbfm_tests2, 4, 0);
+        disassemble (sbfm_tests3, 4, 0);
 
-    /* create the file descriptor */
-    int fd = open (argv[1], O_RDONLY);
+    } else {
 
-    /* calc the file size */
-    struct stat st;
-    fstat (fd, &st);
-    size_t size = st.st_size;
+        int fd = open (argv[1], O_RDONLY);
+        struct stat st;
+        fstat (fd, &st);
+        size_t size = st.st_size;
+        unsigned char *data = mmap (NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+        close (fd);
+        if (data == MAP_FAILED) {
+            printf ("shit\n");
+            return 1;
+        }
+        uint32_t aligned_size = size / sizeof (uint32_t);
+        printf ("aligned: %d\n", aligned_size);
+        uint32_t *ins_data = malloc (aligned_size);
+        for (int i = 0; i < aligned_size; i++) {
+            ins_data[i] = *(uint32_t *) data;
+            data += sizeof (uint32_t);
+        }
 
-    /* mmap the file */
-    unsigned char *data = mmap (NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
-    close (fd);
+        uint64_t base = 0x0000000100002d04;
 
-    /* verify the map was sucessful */
-    if (data == MAP_FAILED) {
-        printf ("shit\n");
-        return 1;
+        printf ("aligned: %d\n", aligned_size);
+        disassemble (ins_data, atoi(argv[2]), base);
     }
-    uint32_t aligned_size = size / sizeof (uint32_t);
-    printf ("aligned: %d\n", aligned_size);
 
-    uint32_t *ins_data = malloc (aligned_size);
-    for (int i = 0; i < aligned_size; i++) {
-        ins_data[i] = *(uint32_t *) data;
-        data += sizeof (uint32_t);
-    }
 
-    uint64_t base = 0x0;
-    for (int i = 0; i < atoi(argv[2]); i++) {
-        instruction_t *in = libarch_instruction_create (ins_data[i], 0);
-        in->addr = base;
-        libarch_disass (&in);
-
-        printf ("0x%016x  %08x\t%s\n", in->addr, in->opcode, in->parsed);
-
-        //instruction_debug (in, 0);
-        //printf ("\n");
-
-        base += sizeof (uint32_t);
-    }
 
     return 0;
 }
