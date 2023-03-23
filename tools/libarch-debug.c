@@ -123,6 +123,8 @@ void disassemble (uint32_t *data, uint32_t len, uint64_t base, int dbg)
 
         if (dbg) instruction_debug (in, 0);
         else printf ("0x%016llx  %08x\t%s\n", in->addr, in->opcode, in->parsed);
+
+        base += 4;
     }
 }
 
