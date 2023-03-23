@@ -113,7 +113,7 @@ void create_string (instruction_t *instr)
     printf ("\n");
 }
 
-void disassemble (uint32_t *data, uint32_t len, uint64_t base)
+void disassemble (uint32_t *data, uint32_t len, uint64_t base, int dbg)
 {
     for (int i = 0; i < len; i++) {
         if (data[i] == NULL) continue;
@@ -121,8 +121,8 @@ void disassemble (uint32_t *data, uint32_t len, uint64_t base)
 
         libarch_disass (&in);
 
-        instruction_debug (in, 0);
-        printf ("0x%016llx  %08x\t%s\n", in->addr, in->opcode, in->parsed);
+        if (dbg) instruction_debug (in, 0);
+        else printf ("0x%016llx  %08x\t%s\n", in->addr, in->opcode, in->parsed);
     }
 }
 
@@ -133,7 +133,7 @@ int main (int argc, char *argv[])
 
     if (argc == 2) {
         uint32_t *opcode[] = { strtol(argv[1], NULL, 16), NULL };
-        disassemble (opcode, 1, 0);
+        disassemble (opcode, 1, 0, 1);
     } else if (argc < 3) {
     
         // SBFM tests
@@ -157,11 +157,12 @@ int main (int argc, char *argv[])
             NULL
         };
     
-        disassemble (sbfm_tests1, 4, 0);
-        disassemble (sbfm_tests2, 4, 0);
-        disassemble (sbfm_tests3, 4, 0);
+        disassemble (sbfm_tests1, 4, 0, 1);
+        disassemble (sbfm_tests2, 4, 0, 1);
+        disassemble (sbfm_tests3, 4, 0, 1);
 
     } else {
+        printf ("disassembling %s\n", argv[1]);
 
         int fd = open (argv[1], O_RDONLY);
         struct stat st;
@@ -174,7 +175,6 @@ int main (int argc, char *argv[])
             return 1;
         }
         uint32_t aligned_size = size / sizeof (uint32_t);
-        printf ("aligned: %d\n", aligned_size);
         uint32_t *ins_data = malloc (aligned_size);
         for (int i = 0; i < aligned_size; i++) {
             ins_data[i] = *(uint32_t *) data;
@@ -184,7 +184,7 @@ int main (int argc, char *argv[])
         uint64_t base = 0x0000000100002d04;
 
         printf ("aligned: %d\n", aligned_size);
-        disassemble (ins_data, atoi(argv[2]), base);
+        disassemble (ins_data, atoi(argv[2]), base, atoi(argv[3]));
     }
 
 

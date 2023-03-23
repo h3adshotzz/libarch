@@ -105,7 +105,7 @@ decode_pc_relative_addressing (instruction_t **instr)
 static libarch_return_t
 decode_add_subtract_immediate (instruction_t **instr)
 {
-    unsigned sf = select_bits ((*instr)->opcode, 31, 31); //select_bits ((*instr)->opcode, 30, 31);
+    unsigned sf = select_bits ((*instr)->opcode, 31, 31);
     unsigned op = select_bits ((*instr)->opcode, 30, 30);
     unsigned S = select_bits ((*instr)->opcode, 29, 29);
 
@@ -116,13 +116,7 @@ decode_add_subtract_immediate (instruction_t **instr)
     unsigned Rd = select_bits ((*instr)->opcode, 0, 4);
 
     /* Add fields in left-right order */
-    libarch_instruction_add_field (instr, sf);
-    libarch_instruction_add_field (instr, op);
-    libarch_instruction_add_field (instr, S);
-    libarch_instruction_add_field (instr, sh);
-    libarch_instruction_add_field (instr, imm12);
-    libarch_instruction_add_field (instr, Rn);
-    libarch_instruction_add_field (instr, Rd);
+    // ...
 
     /* Determine instruction size, and register width */
     uint32_t len;
@@ -132,7 +126,7 @@ decode_add_subtract_immediate (instruction_t **instr)
     if (sf == 1) _SET_64 (size, regs, len);
     else _SET_32 (size, regs, len);
 
-    /* MOV/ADD */
+    /* ADD */
     if (op == 0 && S == 0) {
         /* MOV Alias */
         if (sh == 0 && imm12 == 0 && (Rd == 0b11111 || Rn == 0b11111)) {
@@ -646,8 +640,11 @@ decode_bitfield (instruction_t **instr)
                 libarch_get_general_register (Rn, regs, len),
                 immr);
 
-        } else if (imms < immr) {
-            (*instr)->type = ARM64_INSTRUCTION_SBFIZ;
+        } else if (imms < immr || BFXPreferred (sf, (opc >> 1), imms, immr)) {
+            if (BFXPreferred (sf, (opc >> 1), imms, immr))
+                (*instr)->type = ARM64_INSTRUCTION_SBFX;
+            else
+                (*instr)->type = ARM64_INSTRUCTION_SBFIZ;
 
             unsigned lsb = (size - immr) & (size - 1);
             unsigned width = imms + 1;
@@ -658,39 +655,192 @@ decode_bitfield (instruction_t **instr)
             libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT);
 
             mstrappend(&(*instr)->parsed,
-                "sbfiz  %s, %s, #0x%x, #%d",
+                "%s   %s, %s, #0x%x, #%d",
+                A64_INSTRUCTIONS_STR[(*instr)->type],
                 libarch_get_general_register (Rd, regs, len),
                 libarch_get_general_register (Rn, regs, len),
                 lsb, width);
 
-        } else if (immr == 0 && imms == 0b000111) {
-            // SXTB
-            printf ("SXTB\n");
-        } else if (immr == 0 && imms == 0b001111) {
-            // SXTH
-            printf ("SXTH\n");
-        } else if (immr == 0 && imms == 0b011111) {
-            // SXTW
-            printf ("SXTW\n");
-        } else if (BFXPreferred (sf, (opc >> 1), imms, immr)) {
-            printf ("SBFX\n");
+        } else if (immr == 0 && (imms == 0b000111 || imms == 0b001111 || imms == 0b011111)) {
+
+            /**
+             *  SXTB, SXTH and SXTW have the same format:
+             * 
+             *      SXTB|H|W    Rd, Rn
+             */
+            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL);
+
+            char *name;
+            if (imms == 0b000111) (*instr)->type = ARM64_INSTRUCTION_SXTB;
+            else if (imms == 0b001111) (*instr)->type = ARM64_INSTRUCTION_SXTH;
+            else if (imms == 0b011111) (*instr)->type = ARM64_INSTRUCTION_SXTW;
+
+            mstrappend(&(*instr)->parsed,
+                "%s   %s, %s",
+                A64_INSTRUCTIONS_STR[(*instr)->type],
+                libarch_get_general_register (Rd, regs, len),
+                libarch_get_general_register (Rn, regs, len));
+
         } else {
-            if (sf == 0 && N == 0) {
-                // SBFM (32-bit)
-                printf ("SBFM 32-bit\n");
-            } else if (sf == 0 && N == 0) {
-                // SBFM (64-bit)
-                printf ("SBFM 64-bit\n");
-            }
+            (*instr)->type = ARM64_INSTRUCTION_SBFM;
+
+            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_immediate (instr, immr, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, imms, ARM64_IMMEDIATE_TYPE_UINT);
+
+            mstrappend(&(*instr)->parsed,
+                "sbfm   %s, %s, #0x%x, #0x%x",
+                libarch_get_general_register (Rd, regs, len),
+                libarch_get_general_register (Rn, regs, len),
+                immr, imms);
         }
 
     } else if (opc == 0b01) {
-        // BFM
+        
+        // BFC
+        if (Rn == 0b11111 && (imms < immr)) {
+            (*instr)->type = ARM64_INSTRUCTION_BFC;
+
+            unsigned lsb = (size - immr) & (size - 1);
+            unsigned width = imms + 1;
+
+            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT);
+
+            mstrappend(&(*instr)->parsed,
+                "bfc    %s, #0x%x, #0x%x",
+                libarch_get_general_register (Rd, regs, len),
+                immr, imms);
+
+        } else if ((Rn != 0b11111 && (imms < immr)) || (imms >= immr)) {
+
+            // BFI/BFXIL
+            if ((Rn != 0b11111 && (imms < immr)))
+                (*instr)->type = ARM64_INSTRUCTION_BFI;
+            else if (imms >= immr)
+                (*instr)->type = ARM64_INSTRUCTION_BFXIL;
+
+            unsigned lsb = (size - immr) & (size - 1);
+            unsigned width = imms + 1;
+
+            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT);
+
+            mstrappend(&(*instr)->parsed,
+                "%s   %s, %s, #0x%x, #%d",
+                A64_INSTRUCTIONS_STR[(*instr)->type],
+                libarch_get_general_register (Rd, regs, len),
+                libarch_get_general_register (Rn, regs, len),
+                lsb, width);
+        } else {
+            // BFM
+            (*instr)->type = ARM64_INSTRUCTION_BFM;
+
+            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_immediate (instr, immr, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, imms, ARM64_IMMEDIATE_TYPE_UINT);
+
+            mstrappend(&(*instr)->parsed,
+                "bfm    %s, %s, #0x%x, #0x%x",
+                libarch_get_general_register (Rd, regs, len),
+                libarch_get_general_register (Rn, regs, len),
+                immr, imms);
+        }
+    
     } else if (opc == 0b10) {
-        // UBFM
-    } else {
-        printf ("shit\n");
-    } 
+
+        // LSL/LSR (immediate)
+        if ((imms != 0b11111) && imms + 1 == immr) {
+            // LSL
+            (*instr)->type = ARM64_INSTRUCTION_LSL;
+            
+            unsigned shift = (size - 1) - imms;
+
+            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_immediate (instr, shift, ARM64_IMMEDIATE_TYPE_UINT);
+
+            mstrappend(&(*instr)->parsed,
+                "%s    %s, %s, #0x%x",
+                A64_INSTRUCTIONS_STR[(*instr)->type],
+                libarch_get_general_register (Rd, regs, len),
+                libarch_get_general_register (Rn, regs, len),
+                shift);
+
+        } else if (imms == 0b11111) {
+            // LSR
+            (*instr)->type = ARM64_INSTRUCTION_LSR;
+            
+            unsigned shift = (size - 1) - imms;
+
+            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_immediate (instr, shift, ARM64_IMMEDIATE_TYPE_UINT);
+
+            mstrappend(&(*instr)->parsed,
+                "%s    %s, %s, #0x%x",
+                A64_INSTRUCTIONS_STR[(*instr)->type],
+                libarch_get_general_register (Rd, regs, len),
+                libarch_get_general_register (Rn, regs, len),
+                shift);
+
+        } else if (imms < immr || BFXPreferred (sf, (opc >> 1), imms, immr)) {
+            if (BFXPreferred (sf, (opc >> 1), imms, immr))
+                (*instr)->type = ARM64_INSTRUCTION_UBFX;
+            else
+                (*instr)->type = ARM64_INSTRUCTION_UBFIZ;
+
+            unsigned lsb = (size - immr) & (size - 1);
+            unsigned width = imms + 1;
+
+            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT);
+
+            mstrappend(&(*instr)->parsed,
+                "%s   %s, %s, #0x%x, #%d",
+                A64_INSTRUCTIONS_STR[(*instr)->type],
+                libarch_get_general_register (Rd, regs, len),
+                libarch_get_general_register (Rn, regs, len),
+                lsb, width);
+
+        } else if (immr == 0 && (imms == 0b000111 || imms == 0b001111)) {
+
+            if (imms == 0b000111) (*instr)->type = ARM64_INSTRUCTION_UXTB;
+            else (*instr)->type = ARM64_INSTRUCTION_UXTH;
+
+            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL);
+
+            mstrappend(&(*instr)->parsed,
+                "%s   %s, %s",
+                A64_INSTRUCTIONS_STR[(*instr)->type],
+                libarch_get_general_register (Rd, regs, len),
+                libarch_get_general_register (Rn, regs, len));
+        } else {
+            // UBFM
+            (*instr)->type = ARM64_INSTRUCTION_UBFM;
+
+            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int*) &immr, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int*) &imms, ARM64_IMMEDIATE_TYPE_UINT);
+
+            mstrappend(&(*instr)->parsed,
+                "ubfm   %s, %s, #0x%x, #0x%x",
+                libarch_get_general_register (Rd, regs, len),
+                libarch_get_general_register (Rn, regs, len),
+                immr, imms);
+        }
+        
+    }
 
     
     return LIBARCH_RETURN_SUCCESS;
@@ -699,13 +849,6 @@ decode_bitfield (instruction_t **instr)
 libarch_return_t
 disass_data_processing_instruction (instruction_t *instr)
 {
-    /**
-     *  ** Data Processing - Immediate: Encoding **
-     * 
-     *  Data Processing Immediate instructions have a single `op0`, 3 bits wide,
-     *  located from bit 23:25. This determines the type of immediate operation.
-     * 
-     */
     unsigned op0 = select_bits (instr->opcode, 23, 25);
 
     if ((op0 >> 1) == 0) {
@@ -721,7 +864,7 @@ disass_data_processing_instruction (instruction_t *instr)
     } else if (op0 == 6) {
         decode_bitfield (&instr);
     } else {
-        printf ("shit2\n");
+        printf ("oops\n");
     }
 
     /*
