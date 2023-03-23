@@ -30,4 +30,5 @@ target_sources(libarch
         utils.c
 
         decoder/data-processing.c
+        decoder/branch.c
 )

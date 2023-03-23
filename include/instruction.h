@@ -84,6 +84,7 @@ typedef struct instruction_t
     /* Decode Group and Instruction type */
     uint8_t             group;
     arm64_instr_t       type;
+    uint32_t            cond;
 
     /* Operands */
     operand_t          *operands;

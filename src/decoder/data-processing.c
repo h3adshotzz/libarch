@@ -920,14 +920,6 @@ disass_data_processing_instruction (instruction_t *instr)
         decode_bitfield (&instr);
     } else if (op0 == 7) {
         decode_extract (&instr);
-    } else {
-        printf ("oops\n");
     }
-
-    /*
-    else if (op0 == 5) printf ("move wide\n");
-    else if (op0 == 6) printf ("bitfield\n");
-    else if (op0 == 7) printf ("extract\n");*/
-
     return LIBARCH_RETURN_SUCCESS;
 }
