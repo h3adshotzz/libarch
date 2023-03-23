@@ -846,6 +846,61 @@ decode_bitfield (instruction_t **instr)
     return LIBARCH_RETURN_SUCCESS;
 }
 
+static libarch_return_t
+decode_extract (instruction_t **instr)
+{
+    unsigned sf = select_bits ((*instr)->opcode, 31, 31);
+    unsigned op21 = select_bits ((*instr)->opcode, 29, 30);
+    unsigned N = select_bits ((*instr)->opcode, 22, 22);
+    unsigned o0 = select_bits ((*instr)->opcode, 21, 21);
+
+    unsigned Rm = select_bits ((*instr)->opcode, 16, 20);
+    unsigned imms = select_bits ((*instr)->opcode, 10, 15);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rd = select_bits ((*instr)->opcode, 0, 4);
+
+    printf ("extract\n");
+
+    /* Determine instruction size, and register width */
+    uint32_t len;
+    unsigned size;
+    const char **regs;
+
+    if (sf == 1 && N == 1) _SET_64 (size, regs, len);
+    else _SET_32 (size, regs, len);
+
+    // ROR (immediate)
+    if (Rn == Rm) {
+        (*instr)->type = ARM64_INSTRUCTION_ROR;
+
+        libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT);
+
+        mstrappend(&(*instr)->parsed,
+                "ror    %s, %s, #0x%x",
+                libarch_get_general_register (Rd, regs, len),
+                libarch_get_general_register (Rn, regs, len),
+                imms);
+
+    } else {
+        // EXTR
+        (*instr)->type == ARM64_INSTRUCTION_EXTR;
+
+        libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register (instr, Rm, size, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT);
+
+        mstrappend(&(*instr)->parsed,
+                "extr   %s, %s, %s, #0x%x",
+                libarch_get_general_register (Rd, regs, len),
+                libarch_get_general_register (Rn, regs, len),
+                libarch_get_general_register (Rm, regs, len),
+                imms);
+    }
+}
+
 libarch_return_t
 disass_data_processing_instruction (instruction_t *instr)
 {
@@ -863,6 +918,8 @@ disass_data_processing_instruction (instruction_t *instr)
         decode_move_wide_immediate (&instr);
     } else if (op0 == 6) {
         decode_bitfield (&instr);
+    } else if (op0 == 7) {
+        decode_extract (&instr);
     } else {
         printf ("oops\n");
     }
