@@ -115,6 +115,7 @@ void create_string (instruction_t *instr)
 
 void disassemble (uint32_t *data, uint32_t len, uint64_t base, int dbg)
 {
+    printf ("base: 0x%llx\n", base);
     for (int i = 0; i < len; i++) {
         if (data[i] == NULL) continue;
         instruction_t *in = libarch_instruction_create (data[i], base);
@@ -177,16 +178,21 @@ int main (int argc, char *argv[])
             return 1;
         }
         uint32_t aligned_size = size / sizeof (uint32_t);
+        printf ("aligned: %d\n", aligned_size);
+
         uint32_t *ins_data = malloc (aligned_size);
-        for (int i = 0; i < aligned_size; i++) {
-            ins_data[i] = *(uint32_t *) data;
+        for (int i = 0; i < atoi(argv[2]); i++) {
+            //ins_data[i] = *(uint32_t *) data;
+            instruction_t *in = libarch_instruction_create (*(uint32_t *) data, 0xfffffff007b20000);
+            libarch_disass (&in);
+
+            printf ("0x%016llx  %08x\t%s\n", in->addr, in->opcode, in->parsed);
+
             data += sizeof (uint32_t);
         }
 
-        uint64_t base = 0x0000000100002d04;
-
-        printf ("aligned: %d\n", aligned_size);
-        disassemble (ins_data, atoi(argv[2]), base, atoi(argv[3]));
+        //uint64_t base = 0; //0x0000000100002d04;
+        //disassemble (ins_data, atoi(argv[2]), base, atoi(argv[3]));
     }
 
 

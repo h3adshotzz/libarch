@@ -167,13 +167,12 @@ decode_add_subtract_immediate (instruction_t **instr)
         if (Rd == 0b11111) {
             (*instr)->type = ARM64_INSTRUCTION_CMN;
 
-            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
             libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL);
             libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
 
             mstrappend (&(*instr)->parsed,
                 "cmn   %s, #0x%x",
-                libarch_get_general_register (Rd, regs, len),
+                libarch_get_general_register (Rn, regs, len),
                 imm12);
 
             /* If there is also a shift, append it */
@@ -227,13 +226,12 @@ decode_add_subtract_immediate (instruction_t **instr)
         if (Rd == 0b11111) {
             (*instr)->type = ARM64_INSTRUCTION_CMP;
 
-            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL);
             libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL);
             libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
 
             mstrappend (&(*instr)->parsed,
-                "cmp   %s, #0x%x",
-                libarch_get_general_register (Rd, regs, len),
+                "cmp    %s, #0x%x",
+                libarch_get_general_register (Rn, regs, len),
                 imm12);
 
             /* If there is also a shift, append it */
