@@ -38,21 +38,6 @@
 #include <utils.h>
 
 
-void check_op0 (unsigned int opcode)
-{
-    unsigned op0 = select_bits (opcode, 25, 28);
-    printf ("checking 0x%llx: ", opcode);
-
-    if (op0 == 0) printf ("reserved\n");
-    else if (op0 > 0 && op0 <= 3) printf ("unknown\n");
-    else if ((op0 >> 1) == 4) printf ("data processing immediate\n");
-    else if ((op0 >> 1) == 5) printf ("branch, exception, system\n");
-    else if ((op0 & ~10) == 4) printf ("load and store\n");
-    else if ((op0 & ~8) == 5) printf ("data processing register\n");
-    else if ((op0 & ~8) == 7) printf ("data processing floating\n");
-}
-
-
 void instruction_debug (instruction_t *instr, int show_fields)
 {
     printf ("Parsed:            %s\n", instr->parsed);
@@ -95,20 +80,53 @@ void instruction_debug (instruction_t *instr, int show_fields)
 
 void create_string (instruction_t *instr)
 {
-    printf ("instruction: %s\t", A64_INSTRUCTIONS_STR[instr->type]);
+    printf ("%s\t", A64_INSTRUCTIONS_STR[instr->type]);
     for (int i = 0; i < instr->operands_len; i++) {
         operand_t *op = &instr->operands[i];
 
+        /* Register */
         if (op->op_type == ARM64_OPERAND_TYPE_REGISTER) {
-            char *reg_type = "x";
-            if (op->reg_size == 32) reg_type = "w";
+            char *reg;
 
-            if (op->reg_type == ARM64_REGISTER_TYPE_GENERAL)
-                printf ("%s%d", reg_type, op->reg);
-        } else if (op->op_type == ARM64_OPERAND_TYPE_IMMEDIATE) {
-            printf ("#0x%lx", op->imm_bits);
+            if (op->reg_type == ARM64_REGISTER_TYPE_GENERAL) {
+                reg = libarch_get_general_register (op->reg,
+                    (op->reg_size == 64) ? A64_REGISTERS_GP_64 : A64_REGISTERS_GP_32,
+                    (op->reg_size == 64) ? A64_REGISTERS_GP_64_LEN : A64_REGISTERS_GP_32_LEN);
+            } // ... other types
+
+
+            // Print the register
+            printf ("%s", reg);
+            goto check_comma;
         }
-        printf (" ");
+
+        /* Immediate */
+        if (op->op_type == ARM64_OPERAND_TYPE_IMMEDIATE) {
+            if (op->imm_type == ARM64_IMMEDIATE_TYPE_LONG || op->imm_type == ARM64_IMMEDIATE_TYPE_ULONG)
+                printf ("#0x%llx", op->imm_bits);
+            else
+                printf ("#0x%x", op->imm_bits);
+            
+            goto check_comma;
+        }
+
+        /* Shift */
+        if (op->op_type == ARM64_OPERAND_TYPE_SHIFT) {
+            char *shift;
+
+            if (op->shift_type == ARM64_SHIFT_TYPE_LSL) shift = "lsl";
+            else if (op->shift_type == ARM64_SHIFT_TYPE_LSR) shift = "lsr";
+            else if (op->shift_type == ARM64_SHIFT_TYPE_ASR) shift = "asr";
+            else if (op->shift_type == ARM64_SHIFT_TYPE_ROR) shift = "ror";
+            else if (op->shift_type == ARM64_SHIFT_TYPE_ROR) shift = "ror";
+            else if (op->shift_type == ARM64_SHIFT_TYPE_MSL) shift = "msl";
+            else continue;
+
+            printf ("%s #%d", shift, op->shift);
+        }
+
+check_comma:
+        if (i < instr->operands_len - 1) printf (", ");
     }
     printf ("\n");
 }
@@ -122,7 +140,10 @@ void disassemble (uint32_t *data, uint32_t len, uint64_t base, int dbg)
 
         libarch_disass (&in);
 
-        if (dbg) instruction_debug (in, 0);
+        if (dbg) {
+            instruction_debug (in, 0);
+            create_string (in);
+        }
         else printf ("0x%016llx  %08x\t%s\n", in->addr, in->opcode, in->parsed);
 
         base += 4;
@@ -137,33 +158,6 @@ int main (int argc, char *argv[])
     if (argc == 2) {
         uint32_t *opcode[] = { strtol(argv[1], NULL, 16), NULL };
         disassemble (opcode, 1, 0, 1);
-    } else if (argc < 3) {
-    
-        // SBFM tests
-        uint32_t *sbfm_tests1[] =
-        {
-            0x91000863,         // add      x3, x3, #2
-            0x130c7ce3,         // asr      w3, w7, #0xc
-            NULL
-        };
-        uint32_t *sbfm_tests2[] =
-        {
-            0x936e1ff4,         // sbfiz    x20, xzr, #18, #8
-            0x9357c4c4,         // sbfx     x4, x6, #23, #27
-            NULL
-        };
-        uint32_t *sbfm_tests3[] =
-        {
-            0x93401c83,         // sxtb     x3, w4
-            0x93403c83,         // sxth     x3, w4
-            0x93407c83,         // sxtw     x3, w4
-            NULL
-        };
-    
-        disassemble (sbfm_tests1, 4, 0, 1);
-        disassemble (sbfm_tests2, 4, 0, 1);
-        disassemble (sbfm_tests3, 4, 0, 1);
-
     } else {
         printf ("disassembling %s\n", argv[1]);
 
@@ -186,7 +180,8 @@ int main (int argc, char *argv[])
             instruction_t *in = libarch_instruction_create (*(uint32_t *) data, 0xfffffff007b20000);
             libarch_disass (&in);
 
-            printf ("0x%016llx  %08x\t%s\n", in->addr, in->opcode, in->parsed);
+            //printf ("0x%016llx  %08x\t%s\n", in->addr, in->opcode, in->parsed);
+            create_string (in);
 
             data += sizeof (uint32_t);
         }

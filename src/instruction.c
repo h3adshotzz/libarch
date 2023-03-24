@@ -105,7 +105,6 @@ libarch_instruction_add_field (instruction_t **instr, int field)
 }
 
 
-
 /* move to libarch.c */
 libarch_return_t
 libarch_disass (instruction_t **instr)

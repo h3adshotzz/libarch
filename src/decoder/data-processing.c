@@ -116,7 +116,13 @@ decode_add_subtract_immediate (instruction_t **instr)
     unsigned Rd = select_bits ((*instr)->opcode, 0, 4);
 
     /* Add fields in left-right order */
-    // ...
+    libarch_instruction_add_field (instr, sf);
+    libarch_instruction_add_field (instr, op);
+    libarch_instruction_add_field (instr, S);
+    libarch_instruction_add_field (instr, sh);
+    libarch_instruction_add_field (instr, imm12);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rd);
 
     /* Determine instruction size, and register width */
     uint32_t len;

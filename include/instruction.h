@@ -109,6 +109,8 @@ libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64
 
 extern libarch_return_t
 libarch_instruction_add_field (instruction_t **instr, int field);
+extern libarch_return_t
+libarch_instruction_add_parsed_field (instruction_t **instr, char *field);
 
 
 extern instruction_t *
