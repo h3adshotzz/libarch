@@ -56,14 +56,20 @@ decode_exception_generation (instruction_t **instr)
      */
     if (op2 == 1 || (op2 >> 1) == 1 || (op2 >> 2) == 1)
         return LIBARCH_RETURN_VOID;
+
     if (op2 == 0) {
         if (opc == 0 && LL == 0) return LIBARCH_RETURN_VOID;
-        if ((opc == 1 || opc == 2) && ((LL == 3 || LL == 1) || (LL == 2 || LL == 3))) LIBARCH_RETURN_VOID;
-        if (opc == 3 && (LL == 1 || LL == 2 || LL == 3)) LIBARCH_RETURN_VOID;
-        if (opc == 5 || opc == 6 || opc == 7) LIBARCH_RETURN_VOID;
-        if (opc == 5 && LL == 0) LIBARCH_RETURN_VOID;
+        if ((opc == 1 || opc == 2) && ((LL == 3 || LL == 1) || (LL == 2 || LL == 3)))
+            return LIBARCH_RETURN_VOID;
+        if (opc == 3 && (LL >= 1 && LL <= 3))
+            return LIBARCH_RETURN_VOID;
+        if (opc >= 5 && opc <= 7)
+            return LIBARCH_RETURN_VOID;
+        if (opc == 5 && LL == 0)
+            return LIBARCH_RETURN_VOID;
     }
-    if (op2) return LIBARCH_RETURN_VOID;
+
+    if (op2 != 0) return LIBARCH_RETURN_VOID;
 
     libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm16, ARM64_IMMEDIATE_TYPE_UINT);
 
@@ -124,8 +130,17 @@ decode_hints (instruction_t **instr)
     unsigned D = select_bits ((*instr)->opcode, 10, 10);
     unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
     unsigned Rd = select_bits ((*instr)->opcode, 0, 4);
+    printf ("yup\n");
 
-    if (CRm == 0) {
+    if (CRm == 4 && (op2 & ~6) == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_BTI;
+
+        unsigned ind = op2 >> 1;
+        const char *targets[] = {"", "c", "j", "jc"};
+        mstrappend (&(*instr)->parsed, "bti %s", targets[ind]);
+
+    // NOP / YIELD / WFE / WFI / SEV / SEVL / DGH
+    } else if (CRm == 0) {
         if (op2 == 0) {
             (*instr)->type = ARM64_INSTRUCTION_NOP;
             (*instr)->parsed = "nop";
@@ -164,6 +179,7 @@ decode_hints (instruction_t **instr)
         }
     
     } else if (CRm == 1) {
+        // PACIA / PACIZA / PACIA1716
         if (op2 == 0) {
             // PACIA
             if (Z == 0) {
@@ -176,21 +192,187 @@ decode_hints (instruction_t **instr)
                     "pacia  %s, %s",
                     libarch_get_general_register (Rd, A64_REGISTERS_GP_64, A64_REGISTERS_GP_64_LEN),
                     libarch_get_general_register (Rn, A64_REGISTERS_GP_64, A64_REGISTERS_GP_64_LEN));
+
+            // PACIZA
+            } else if (Z == 1 && Rn == 0b11111) {
+                (*instr)->type = ARM64_INSTRUCTION_PACIZA;
+
+                libarch_instruction_add_operand_register (instr, Rd, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+                mstrappend (&(*instr)->parsed,
+                    "paciza %s",
+                    libarch_get_general_register (Rd, A64_REGISTERS_GP_64, A64_REGISTERS_GP_64_LEN));
+            
+            // PACIA1716
+            } else {
+                (*instr)->type = ARM64_INSTRUCTION_PACIA1716;
+                (*instr)->parsed = "pacia1716";
             }
+
+        // PACIB / PACIZB / PACIB1716
         } else if (op2 == 2) {
+            // PACIB
+            if (Z == 0) {
+                (*instr)->type = ARM64_INSTRUCTION_PACIB;
 
+                libarch_instruction_add_operand_register (instr, Rd, 64, ARM64_REGISTER_TYPE_GENERAL);
+                libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+                mstrappend (&(*instr)->parsed,
+                    "pacib  %s, %s",
+                    libarch_get_general_register (Rd, A64_REGISTERS_GP_64, A64_REGISTERS_GP_64_LEN),
+                    libarch_get_general_register (Rn, A64_REGISTERS_GP_64, A64_REGISTERS_GP_64_LEN));
+
+            // PACIZB
+            } else if (Z == 1 && Rn == 0b11111) {
+                (*instr)->type = ARM64_INSTRUCTION_PACIZA;
+
+                libarch_instruction_add_operand_register (instr, Rd, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+                mstrappend (&(*instr)->parsed,
+                    "pacizb %s",
+                    libarch_get_general_register (Rd, A64_REGISTERS_GP_64, A64_REGISTERS_GP_64_LEN));
+            
+            // PACIB1716
+            } else {
+                (*instr)->type = ARM64_INSTRUCTION_PACIB1716;
+                (*instr)->parsed = "pacib1716";
+            }
+
+        // AUTIA / AUTIZA / AUTIA1716
         } else if (op2 == 4) {
+            // AUTIA
+            if (Z == 0) {
+                (*instr)->type = ARM64_INSTRUCTION_AUTIA;
 
+                libarch_instruction_add_operand_register (instr, Rd, 64, ARM64_REGISTER_TYPE_GENERAL);
+                libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+                mstrappend (&(*instr)->parsed,
+                    "autia  %s, %s",
+                    libarch_get_general_register (Rd, A64_REGISTERS_GP_64, A64_REGISTERS_GP_64_LEN),
+                    libarch_get_general_register (Rn, A64_REGISTERS_GP_64, A64_REGISTERS_GP_64_LEN));
+
+            // AUTIZA
+            } else if (Z == 1 && Rn == 0b11111) {
+                (*instr)->type = ARM64_INSTRUCTION_AUTIZA;
+
+                libarch_instruction_add_operand_register (instr, Rd, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+                mstrappend (&(*instr)->parsed,
+                    "autiza %s",
+                    libarch_get_general_register (Rd, A64_REGISTERS_GP_64, A64_REGISTERS_GP_64_LEN));
+
+            // AUTIA1716
+            } else {
+                (*instr)->type = ARM64_INSTRUCTION_AUTIA1716;
+                (*instr)->parsed = "autia1716";
+            }
+
+        // AUTIB / AUTIZB / AUTIB1716
         } else if (op2 == 6) {
+            // AUTIB
+            if (Z == 0) {
+                (*instr)->type = ARM64_INSTRUCTION_AUTIB;
 
+                libarch_instruction_add_operand_register (instr, Rd, 64, ARM64_REGISTER_TYPE_GENERAL);
+                libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+                mstrappend (&(*instr)->parsed,
+                    "autib  %s, %s",
+                    libarch_get_general_register (Rd, A64_REGISTERS_GP_64, A64_REGISTERS_GP_64_LEN),
+                    libarch_get_general_register (Rn, A64_REGISTERS_GP_64, A64_REGISTERS_GP_64_LEN));
+
+            // AUTIZB
+            } else if (Z == 1 && Rn == 0b11111) {
+                (*instr)->type = ARM64_INSTRUCTION_AUTIZB;
+
+                libarch_instruction_add_operand_register (instr, Rd, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+                mstrappend (&(*instr)->parsed,
+                    "autizb %s",
+                    libarch_get_general_register (Rd, A64_REGISTERS_GP_64, A64_REGISTERS_GP_64_LEN));
+
+            // AUTIB1716
+            } else {
+                (*instr)->type = ARM64_INSTRUCTION_AUTIB1716;
+                (*instr)->parsed = "autib1716";
+            }
+        }
+    } else if (CRm == 2) {
+        // ESB
+        if (op2 == 0) {
+            (*instr)->type = ARM64_INSTRUCTION_ESB;
+            (*instr)->parsed = "esb";
+
+        // PSB CSYNC
+        } else if (op2 == 1) {
+            (*instr)->type = ARM64_INSTRUCTION_PSB_CSYNC;
+            (*instr)->parsed = "psb csync";
+
+        // TSB CSYNC
+        } else if (op2 == 2) {
+            (*instr)->type = ARM64_INSTRUCTION_TSB_CSYNC;
+            (*instr)->parsed = "tsb csync";
+
+        // CSDB
+        } else if (op2 == 4) {
+            (*instr)->type = ARM64_INSTRUCTION_CSDB;
+            (*instr)->parsed = "csdb";
+        }
+    } else if (CRm == 3) {
+        // PACIASP
+        if (op2 == 1) {
+            (*instr)->type = ARM64_INSTRUCTION_PACIASP;
+            (*instr)->parsed = "paciasp";
+
+        // PACIAZ
+        } else if (op2 == 0) {
+            (*instr)->type = ARM64_INSTRUCTION_PACIAZ;
+            (*instr)->parsed = "paciaz";
+        
+        // PACIBSP
+        } else if (op2 == 3) {
+            (*instr)->type = ARM64_INSTRUCTION_PACIBSP;
+            (*instr)->parsed = "pacibsp";
+        
+        // PACIBZ
+        } else if (op2 == 2) {
+            (*instr)->type = ARM64_INSTRUCTION_PACIBZ;
+            (*instr)->parsed = "pacibz";
+
+        // AUTIASP
+        } else if (op2 == 5) {
+            (*instr)->type = ARM64_INSTRUCTION_AUTIASP;
+            (*instr)->parsed = "autiasp";
+
+        // AUTIAZ
+        } else if (op2 == 4) {
+            (*instr)->type = ARM64_INSTRUCTION_AUTIAZ;
+            (*instr)->parsed = "autiaz";
+
+        // AUTIBSP
+        } else if (op2 == 7) {
+            (*instr)->type = ARM64_INSTRUCTION_AUTIASP;
+            (*instr)->parsed = "autibsp";
+
+        // AUTIBZ
+        } else if (op2 == 6) {
+            (*instr)->type = ARM64_INSTRUCTION_AUTIAZ;
+            (*instr)->parsed = "autibz";
         }
     }
-
-
 
     return LIBARCH_RETURN_SUCCESS;
 }
 
+static libarch_return_t
+decode_barriers (instruction_t **instr)
+{
+    unsigned CRm = select_bits ((*instr)->opcode, 8, 11);
+    unsigned op2 = select_bits ((*instr)->opcode, 5, 7);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+}
 
 libarch_return_t
 disass_branch_exception_sys_instruction (instruction_t *instr)
@@ -204,7 +386,7 @@ disass_branch_exception_sys_instruction (instruction_t *instr)
 
     } else if (op0 == 6 && (op1 >> 12) == 0) {
         decode_exception_generation (&instr);
-        
+
     } else if (op0 == 6 && op1 == 0b01000000110001) {
         decode_system_instruction_with_register (&instr);
 
@@ -237,6 +419,9 @@ disass_branch_exception_sys_instruction (instruction_t *instr)
             printf ("compare and branch (immediate)\n");
         else
             printf ("test and branch (immediate)\n");
+    } else {
+        // HINT
+        instr->type = ARM64_INSTRUCTION_HINT;
     }
     return LIBARCH_RETURN_SUCCESS;
 }

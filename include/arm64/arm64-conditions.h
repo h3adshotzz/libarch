@@ -22,8 +22,8 @@ typedef enum arm64_cond_t
 {
     ARM64_BRANCH_CONDITION_EQ = 0,      // Equal
     ARM64_BRANCH_CONDITION_NE,          // Not Equal
-    ARM64_BRANCH_CONDITION_CS,          // Carry Set
-    ARM64_BRANCH_CONDITION_CC,          // Carry Clear
+    ARM64_BRANCH_CONDITION_HS,          // Carry Set
+    ARM64_BRANCH_CONDITION_LO,          // Carry Clear
     ARM64_BRANCH_CONDITION_MI,          // Minus, Negative
     ARM64_BRANCH_CONDITION_PL,          // Plus, positive, zero
     ARM64_BRANCH_CONDITION_VS,          // Overflow
@@ -40,7 +40,7 @@ typedef enum arm64_cond_t
 
 static const char *A64_CONDITIONS_STR[] =
 {
-    "eq", "ne", "cs", "cc", "mi", "pl",
+    "eq", "ne", "hs", "lo", "mi", "pl",
     "vs", "vc", "hi", "ls", "ge", "lt",
     "gt", "le", "al", "nv",
 };
