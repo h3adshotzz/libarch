@@ -809,6 +809,7 @@ typedef enum arm64_instr_t
     ARM64_INSTRUCTION_WFET,
     ARM64_INSTRUCTION_WFIT,
     ARM64_INSTRUCTION_DGH,
+    ARM64_INSTRUCTION_TCOMMIT,
 } arm64_instr_t;
 
 static const char *A64_INSTRUCTIONS_STR[] = 
@@ -1587,6 +1588,7 @@ static const char *A64_INSTRUCTIONS_STR[] =
     "wfet",
     "wfit",
     "dgh",
+    "tcommit",
 };
 
 static uint64_t A64_INSTRUCTIONS_STR_LEN = sizeof (A64_INSTRUCTIONS_STR) / sizeof (*A64_INSTRUCTIONS_STR);

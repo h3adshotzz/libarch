@@ -372,6 +372,94 @@ decode_barriers (instruction_t **instr)
     unsigned CRm = select_bits ((*instr)->opcode, 8, 11);
     unsigned op2 = select_bits ((*instr)->opcode, 5, 7);
     unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    /* Unallocated */
+    if (op2 == 0) return LIBARCH_RETURN_VOID;
+    if ((op2 == 1 || op2 == 7) && Rt != 0b11111) return LIBARCH_RETURN_VOID;
+    // if CRm == xx0x, op2 == 001, Rt = 11111
+    // if CRm == xx11, op2 == 001, Rt = 11111
+    if (CRm == 1 && op2 == 3) return LIBARCH_RETURN_VOID;
+    if ((CRm >> 1) == 1 && op2 == 3) return LIBARCH_RETURN_VOID;
+    if ((CRm >> 2) == 1 && op2 == 3) return LIBARCH_RETURN_VOID;
+    if ((CRm >> 3) == 1 && op2 == 3) return LIBARCH_RETURN_VOID;
+
+    // CLREX
+    if (op2 == 2 && Rt == 0b11111) {
+        (*instr)->type = ARM64_INSTRUCTION_CLREX;
+
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_UINT);
+        mstrappend (&(*instr)->parsed, "clrex  #0x%x", *(unsigned int *) &CRm);
+
+    // DSB
+    } else if (Rt == 0b11111) {
+        // DSB
+        if (op2 == 4) (*instr)->type = ARM64_INSTRUCTION_DSB;
+        else if (op2 == 5) (*instr)->type = ARM64_INSTRUCTION_DMB;
+        else if (op2 == 6) (*instr)->type = ARM64_INSTRUCTION_ISB;
+        else if (op2 == 7) (*instr)->type = ARM64_INSTRUCTION_SB;
+        else if (op2 == 3) (*instr)->type = ARM64_INSTRUCTION_TCOMMIT;
+
+        (*instr)->parsed = A64_INSTRUCTIONS_STR[(*instr)->type];
+    }
+
+    return LIBARCH_RETURN_SUCCESS;
+}
+
+static libarch_return_t
+decode_pstate (instruction_t **instr)
+{
+    unsigned op1 = select_bits ((*instr)->opcode, 16, 18);
+    unsigned CRm = select_bits ((*instr)->opcode, 8, 11);
+    unsigned op2 = select_bits ((*instr)->opcode, 5, 7);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    unsigned char *pstate;
+
+    /* Unallocated */
+    if (Rt != 0b11111) return LIBARCH_RETURN_VOID;
+
+    // CFINV / XAFLAG / AXFLAG
+    if (op1 == 0) {
+
+        // CFINV
+        if (op2 == 0) {
+
+        // XAFLAG
+        } else if (op2 == 1) {
+
+        // AXFLAG
+        } else if (op2 == 2) {
+
+
+        }
+
+    } else {
+        // MSR (Immediate)
+        (*instr)->type = ARM64_INSTRUCTION_MSR;
+
+        // Calculate pstate
+        if (op1 == 0 && op2 == 5) pstate = "SPSel";
+        else if (op1 == 3 && op2 == 6) pstate = "DAIFSet";
+        else if (op1 == 3 && op2 == 7) pstate = "DAIFClr";
+        else if (op1 == 0 && op2 == 3) pstate = "UAO";
+        else if (op1 == 0 && op2 == 4) pstate = "PAN";
+        else if (op1 == 1 && op2 == 0 && (CRm >> 1) == 0) pstate = "ALLINT";
+        else if (op1 == 3 && op2 == 1) pstate = "SSBS";
+        else if (op1 == 3 && op2 == 2) pstate = "DIT";
+        else if (op1 == 3 && op2 == 3) {
+            if ((CRm >> 1) == 1) pstate = "SVCRSM";
+            else if ((CRm >> 1) == 2) pstate = "SVCRZA";
+            else if ((CRm >> 1) == 3) pstate = "SVCRSMZA";
+        }
+        else if (op1 == 3 && op2 == 4) pstate = "TC0";
+
+        mstrappend (&(*instr)->parsed,
+            "msr    %s, #0x%x",
+            pstate, CRm);
+
+    }
+
+    return LIBARCH_RETURN_SUCCESS;
 }
 
 libarch_return_t
@@ -394,10 +482,11 @@ disass_branch_exception_sys_instruction (instruction_t *instr)
         decode_hints (&instr);
 
     } else if (op0 == 6 && op1 == 0b01000000110011) {
-        printf ("barriers\n");
+        decode_barriers (&instr);
 
     } else if (op0 == 6 && (op1 & ~0x70) == 0x1004) {
         printf ("pstate\n");
+        decode_pstate (&instr);
 
     } else if (op0 == 6 && (op1 >> 7) == 0b0100100) {
         printf ("system instruction w/ result\n");

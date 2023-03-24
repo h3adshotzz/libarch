@@ -18,6 +18,7 @@
 
 #include <stdlib.h>
 
+/* General Conditions */
 typedef enum arm64_cond_t
 {
     ARM64_BRANCH_CONDITION_EQ = 0,      // Equal
@@ -45,5 +46,16 @@ static const char *A64_CONDITIONS_STR[] =
     "gt", "le", "al", "nv",
 };
 static uint64_t A64_CONDITIONS_STR_LEN = sizeof (A64_CONDITIONS_STR) / sizeof (*A64_CONDITIONS_STR);
+
+
+/* Memory Barrier Conditions */
+static const char *A64_MEM_BARRIER_CONDITIONS_STR[] =
+{
+    "#0x0", "oshld", "oshst", "osh", "#0x4",
+    "nshld", "nshst", "nsh", "#0x8", "ishld", 
+    "ishst", "ish", "#0xb", "ld", "st", "sy",
+};
+static uint64_t A64_MEM_BARRIER_CONDITIONS_STR_LEN = sizeof (A64_MEM_BARRIER_CONDITIONS_STR) / sizeof (*A64_MEM_BARRIER_CONDITIONS_STR);
+
 
 #endif /* __libarch_arm64_conditions_h__ */
