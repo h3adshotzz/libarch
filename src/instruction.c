@@ -136,7 +136,25 @@ libarch_instruction_add_operand_at_name (instruction_t **instr, arm64_addr_trans
 
     /* Add the new operand */
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_AT_NAME;
-    (*instr)->operands[(*instr)->operands_len - 1].pstate = at;
+    (*instr)->operands[(*instr)->operands_len - 1].at_name = at;
+
+    return LIBARCH_RETURN_SUCCESS;
+}
+
+libarch_return_t
+libarch_instruction_add_operand_tlbi_op (instruction_t **instr, arm64_tlbi_op_t tlbi)
+{
+    /* Alloc/Realloc operands array */
+    if ((*instr)->operands_len == 0) {
+        (*instr)->operands = malloc (sizeof (operand_t) * ++(*instr)->operands_len);
+    } else {
+        operand_t *new = (*instr)->operands = realloc ((*instr)->operands, sizeof (operand_t) * ++(*instr)->operands_len);
+        (*instr)->operands = new;
+    }
+
+    /* Add the new operand */
+    (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_TLBI_OP;
+    (*instr)->operands[(*instr)->operands_len - 1].tlbi_op = tlbi;
 
     return LIBARCH_RETURN_SUCCESS;
 }

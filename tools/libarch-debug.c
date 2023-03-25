@@ -33,6 +33,7 @@
 #include <arm64/arm64-instructions.h>
 #include <arm64/arm64-registers.h>
 #include <arm64/arm64-misc.h>
+#include <arm64/arm64-tlbi-ops.h>
 
 #include <instruction.h>
 #include <register.h>
@@ -157,6 +158,11 @@ void create_string (instruction_t *instr)
         /* Address Translate Name */
         if (op->op_type == ARM64_OPERAND_TYPE_AT_NAME) {
             printf ("%s", A64_AT_NAMES_STR[op->at_name]);
+        }
+
+        /* TLBI Ops */
+        if (op->op_type == ARM64_OPERAND_TYPE_TLBI_OP) {
+            printf ("%s", A64_TLBI_OPS_STR[op->tlbi_op]);
         }
 
 check_comma:

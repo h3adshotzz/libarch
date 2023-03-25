@@ -490,15 +490,6 @@ decode_system_instruction (instruction_t **instr)
     // SYS
     if (L == 0) {
 
-        // CRn == '0111' && CRm == '100x' && SysOp(op1,'0111',CRm,op2) == Sys_AT
-        // op1 == '001' && CRn == '0111' && CRm == '0010' && SysOp('001','0111','0010',op2) == Sys_BRB
-        // op1 == '011' && CRn == '0111' && CRm == '0011' && op2 == '100'
-        // op1 == '011' && CRn == '0111' && CRm == '0011' && op2 == '111'
-        // CRn == '0111' && SysOp(op1,'0111',CRm,op2) == Sys_DC
-        // op1 == '011' && CRn == '0111' && CRm == '0011' && op2 == '101'
-        // CRn == '0111' && SysOp(op1,'0111',CRm,op2) == Sys_IC
-        // CRn == '100x' && SysOp(op1,CRn,CRm,op2) == Sys_TLBI
-
         // AT
         if (CRn == 7 && (CRm == 8 || CRm == 9) && SysOp (op1, 0b0111, CRm, op2) == ARM64_SYSOP_AT) {
             (*instr)->type = ARM64_INSTRUCTION_AT;
@@ -527,33 +518,28 @@ decode_system_instruction (instruction_t **instr)
             libarch_instruction_add_operand_at_name (instr, at);
             libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
 
-        // CFP   
-        } else if (op1 == 3 && CRn == 7 && CRm == 3 && op2 == 4) {
-            (*instr)->type = ARM64_INSTRUCTION_CFP;
-
-        // CPP
-        } else if (op1 == 3 && CRn == 7 && CRm == 3 && op2 == 7) {
-            (*instr)->type = ARM64_INSTRUCTION_CPP;
-
-        // DC
-        } else if (CRn == 7 && SysOp (op1, 0b111, CRm, op2) == ARM64_SYSOP_DC) {
-            (*instr)->type = ARM64_INSTRUCTION_DC;
-
-        // DVP
-        } else if (op1 == 3 && CRn == 7 && CRm == 3 && op2 == 5) {
-            (*instr)->type = ARM64_INSTRUCTION_DVP;
-
-        // IC
-        } else if (CRn == 7 && SysOp (op1, 0b0111, CRm, op2) == ARM64_SYSOP_IC) {
-            (*instr)->type = ARM64_INSTRUCTION_IC;
-
         // TLBI
         } else if ((CRn >> 1) == 4 && SysOp (op1, CRn, CRm, op2) == ARM64_SYSOP_TLBI) {
             (*instr)->type = ARM64_INSTRUCTION_TLBI;
 
+            arm64_tlbi_op_t tlbi = get_tlbi (op1, CRn, CRm, op2);
+            libarch_instruction_add_operand_tlbi_op (instr, tlbi);
+
+            // Rt is optional
+            if (Rt != 0b11111)
+                libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+
         // SYS
         } else {
             (*instr)->type = ARM64_INSTRUCTION_SYS;
+
+            /**
+             *  The instructions CFP, CPP, DC, DVP and IC are left to default to
+             *  'SYS'. They each have additional operands but aren't very common
+             *  so to save the operand_t struct becoming a monster, just let them
+             *  default to sys instructions.
+            */
 
             libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op1, ARM64_IMMEDIATE_TYPE_UINT);
             libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRn, ARM64_IMMEDIATE_TYPE_SYSC);
@@ -561,11 +547,9 @@ decode_system_instruction (instruction_t **instr)
             libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op2, ARM64_IMMEDIATE_TYPE_UINT);
 
             // Rt is optional
-            if (Rt != 0b11111) {
+            if (Rt != 0b11111)
                 libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
-            }
         }
-
 
     // SYSL
     } else {

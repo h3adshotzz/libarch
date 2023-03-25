@@ -25,6 +25,7 @@
 #include "arm64/arm64-instructions.h"
 #include "arm64/arm64-registers.h"
 #include "arm64/arm64-misc.h"
+#include "arm64/arm64-tlbi-ops.h"
 
 
 #define ARM64_NONE                              0
@@ -58,6 +59,7 @@
 #define ARM64_OPERAND_TYPE_TARGET               19
 #define ARM64_OPERAND_TYPE_PSTATE               20
 #define ARM64_OPERAND_TYPE_AT_NAME              21
+#define ARM64_OPERAND_TYPE_TLBI_OP              22
 
 typedef struct operand_t
 {
@@ -85,6 +87,9 @@ typedef struct operand_t
 
     /* op_type == ARM64_OPERAND_TYPE_AT_NAME */
     arm64_addr_trans_t  at_name;
+
+    /* op_type == ARM64_OPERAND_TYPE_TLBI_OP */
+    arm64_tlbi_op_t     tlbi_op;
 
 } operand_t;
 
@@ -129,7 +134,8 @@ extern libarch_return_t
 libarch_instruction_add_operand_pstate (instruction_t **instr, arm64_pstate_t pstate);
 extern libarch_return_t
 libarch_instruction_add_operand_at_name (instruction_t **instr, arm64_addr_trans_t at);
-
+extern libarch_return_t
+libarch_instruction_add_operand_tlbi_op (instruction_t **instr, arm64_tlbi_op_t tlbi);
 
 extern instruction_t *
 libarch_instruction_create (uint32_t opcode, uint64_t addr);

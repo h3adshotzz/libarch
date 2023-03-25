@@ -17,6 +17,7 @@
 #include "utils.h"
 
 #include "arm64/arm64-misc.h"
+#include "arm64/arm64-tlbi-ops.h"
 
 /**
  *  AArch64 Reference Manual shared/functions/common/
@@ -254,6 +255,82 @@ SysOp (unsigned op1, unsigned CRn, unsigned CRm, unsigned op2)
         default: 
             return ARM64_SYSOP_SYS;
     };
+}
+
+int
+get_tlbi (unsigned op1, unsigned CRn, unsigned CRm, unsigned op2)
+{
+    unsigned encoding = (((op1 << 7) | (CRm << 3)) | op2);
+    switch (encoding) 
+    {
+        case 0x18: return ARM64_TLBI_OP_VMALLE1IS;
+        case 0x19: return ARM64_TLBI_OP_VAE1IS;
+        case 0x1a: return ARM64_TLBI_OP_ASIDE1IS;
+        case 0x1b: return ARM64_TLBI_OP_VAAE1IS;
+        case 0x1d: return ARM64_TLBI_OP_VALE1IS;
+        case 0x1f: return ARM64_TLBI_OP_VAALE1IS;
+        case 0x38: return ARM64_TLBI_OP_VMALLE1;
+        case 0x39: return ARM64_TLBI_OP_VAE1;
+        case 0x3a: return ARM64_TLBI_OP_ASIDE1;
+        case 0x3b: return ARM64_TLBI_OP_VAAE1;
+        case 0x3d: return ARM64_TLBI_OP_VALE1;
+        case 0x3f: return ARM64_TLBI_OP_VAALE1;
+        case 0x201: return ARM64_TLBI_OP_IPAS2E1IS;
+        case 0x205: return ARM64_TLBI_OP_IPAS2LE1IS;
+        case 0x218: return ARM64_TLBI_OP_ALLE2IS;
+        case 0x219: return ARM64_TLBI_OP_VAE2IS;
+        case 0x21c: return ARM64_TLBI_OP_ALLE1IS;
+        case 0x21d: return ARM64_TLBI_OP_VALE2IS;
+        case 0x21e: return ARM64_TLBI_OP_VMALLS12E1IS;
+        case 0x221: return ARM64_TLBI_OP_IPAS2E1;
+        case 0x225: return ARM64_TLBI_OP_IPAS2LE1;
+        case 0x238: return ARM64_TLBI_OP_ALLE2;
+        case 0x239: return ARM64_TLBI_OP_VAE2;
+        case 0x23c: return ARM64_TLBI_OP_ALLE1;
+        case 0x23d: return ARM64_TLBI_OP_VALE2;
+        case 0x23e: return ARM64_TLBI_OP_VMALLS12E1;
+        case 0x318: return ARM64_TLBI_OP_ALLE3IS;
+        case 0x319: return ARM64_TLBI_OP_VAE3IS;
+        case 0x31d: return ARM64_TLBI_OP_VALE3IS;
+        case 0x338: return ARM64_TLBI_OP_ALLE3;
+        case 0x339: return ARM64_TLBI_OP_VAE3;
+        case 0x33d: return ARM64_TLBI_OP_VALE3;
+        case 0x8: return ARM64_TLBI_OP_VMALLE1OS;
+        case 0x9: return ARM64_TLBI_OP_VAE1OS;
+        case 0xa: return ARM64_TLBI_OP_ASIDE1OS;
+        case 0xb: return ARM64_TLBI_OP_VAAE1OS;
+        case 0xd: return ARM64_TLBI_OP_VALE1OS;
+        case 0xf: return ARM64_TLBI_OP_VAALE1OS;
+        case 0x11: return ARM64_TLBI_OP_RVAE1IS;
+        case 0x13: return ARM64_TLBI_OP_RVAAE1IS;
+        case 0x15: return ARM64_TLBI_OP_RVALE1IS;
+        case 0x17: return ARM64_TLBI_OP_RVAALE1IS;
+        case 0x29: return ARM64_TLBI_OP_RVAE1OS;
+        case 0x2b: return ARM64_TLBI_OP_RVAAE1OS;
+        case 0x2d: return ARM64_TLBI_OP_RVALE1OS;
+        case 0x2f: return ARM64_TLBI_OP_RVAALE1OS;
+        case 0x31: return ARM64_TLBI_OP_RVAE1;
+        case 0x33: return ARM64_TLBI_OP_RVAAE1;
+        case 0x35: return ARM64_TLBI_OP_RVALE1;
+        case 0x37: return ARM64_TLBI_OP_RVAALE1;
+        case 0x202: return ARM64_TLBI_OP_RIPAS2E1IS;
+        case 0x206: return ARM64_TLBI_OP_RIPAS2LE1IS;
+        case 0x208: return ARM64_TLBI_OP_ALLE2OS;
+        case 0x209: return ARM64_TLBI_OP_VAE2OS;
+        case 0x20c: return ARM64_TLBI_OP_ALLE1OS;
+        case 0x20d: return ARM64_TLBI_OP_VALE2OS;
+        case 0x20e: return ARM64_TLBI_OP_VMALLS12E1OS;
+        case 0x211: return ARM64_TLBI_OP_RVAE2IS;
+        case 0x215: return ARM64_TLBI_OP_RVALE2IS;
+        case 0x220: return ARM64_TLBI_OP_IPAS2E1OS;
+
+        case 0x224: return ARM64_TLBI_OP_IPAS2LE1OS;
+        case 0x308: return ARM64_TLBI_OP_ALLE3OS;
+        case 0x309: return ARM64_TLBI_OP_VAE3OS;
+        case 0x30d: return ARM64_TLBI_OP_VALE3OS;
+
+        default: return ARM64_TLBI_OP_UNKNOWN;
+    }
 }
 
 /* --------------------------------------------------------------------------- */
