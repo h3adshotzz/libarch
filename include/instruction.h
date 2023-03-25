@@ -49,37 +49,42 @@
 #define ARM64_IMMEDIATE_TYPE_LONG               12
 #define ARM64_IMMEDIATE_TYPE_ULONG              13
 #define ARM64_IMMEDIATE_TYPE_FLOAT              14
+#define ARM64_IMMEDIATE_TYPE_SYSC               15
 
 /* Operand type flags */
-#define ARM64_OPERAND_TYPE_REGISTER             15
-#define ARM64_OPERAND_TYPE_SHIFT                16
-#define ARM64_OPERAND_TYPE_IMMEDIATE            17
-#define ARM64_OPERAND_TYPE_TARGET               18
-#define ARM64_OPERAND_TYPE_PSTATE               19
+#define ARM64_OPERAND_TYPE_REGISTER             16
+#define ARM64_OPERAND_TYPE_SHIFT                17
+#define ARM64_OPERAND_TYPE_IMMEDIATE            18
+#define ARM64_OPERAND_TYPE_TARGET               19
+#define ARM64_OPERAND_TYPE_PSTATE               20
+#define ARM64_OPERAND_TYPE_AT_NAME              21
 
 typedef struct operand_t
 {
     /* Operand type */
-    uint8_t         op_type;
+    uint8_t             op_type;
 
     /* op_type == ARM64_OPERAND_TYPE_REGISTER */
-    arm64_reg_t     reg;
-    uint8_t         reg_size;
-    uint8_t         reg_type;
+    arm64_reg_t         reg;
+    uint8_t             reg_size;
+    uint8_t             reg_type;
 
     /* op_type == ARM64_OPERAND_TYPE_SHIFT */
-    uint32_t        shift;
-    uint8_t         shift_type;
+    uint32_t            shift;
+    uint8_t             shift_type;
 
     /* op_type == ARM64_OPERAND_TYPE_IMMEDIATE */
-    uint64_t        imm_bits; 
-    uint8_t         imm_type;
+    uint64_t            imm_bits; 
+    uint8_t             imm_type;
 
     /* op_type == ARM64_OPERAND_TYPE_TARGET */
-    char           *target;
+    char               *target;
 
     /* op_type == ARM64_OPERAND_TYPE_PSTATE */
-    arm64_pstate_t  pstate;
+    arm64_pstate_t      pstate;
+
+    /* op_type == ARM64_OPERAND_TYPE_AT_NAME */
+    arm64_addr_trans_t  at_name;
 
 } operand_t;
 
@@ -122,6 +127,8 @@ extern libarch_return_t
 libarch_instruction_add_operand_target (instruction_t **instr, char *target);
 extern libarch_return_t
 libarch_instruction_add_operand_pstate (instruction_t **instr, arm64_pstate_t pstate);
+extern libarch_return_t
+libarch_instruction_add_operand_at_name (instruction_t **instr, arm64_addr_trans_t at);
 
 
 extern instruction_t *

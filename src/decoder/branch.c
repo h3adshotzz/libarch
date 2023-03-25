@@ -477,6 +477,111 @@ decode_pstate (instruction_t **instr)
     return LIBARCH_RETURN_SUCCESS;
 }
 
+static libarch_return_t
+decode_system_instruction (instruction_t **instr)
+{
+    unsigned L = select_bits ((*instr)->opcode, 21, 21);
+    unsigned op1 = select_bits ((*instr)->opcode, 16, 18);
+    unsigned CRn = select_bits ((*instr)->opcode, 12, 15);
+    unsigned CRm = select_bits ((*instr)->opcode, 8, 11);
+    unsigned op2 = select_bits ((*instr)->opcode, 5, 7);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    // SYS
+    if (L == 0) {
+
+        // CRn == '0111' && CRm == '100x' && SysOp(op1,'0111',CRm,op2) == Sys_AT
+        // op1 == '001' && CRn == '0111' && CRm == '0010' && SysOp('001','0111','0010',op2) == Sys_BRB
+        // op1 == '011' && CRn == '0111' && CRm == '0011' && op2 == '100'
+        // op1 == '011' && CRn == '0111' && CRm == '0011' && op2 == '111'
+        // CRn == '0111' && SysOp(op1,'0111',CRm,op2) == Sys_DC
+        // op1 == '011' && CRn == '0111' && CRm == '0011' && op2 == '101'
+        // CRn == '0111' && SysOp(op1,'0111',CRm,op2) == Sys_IC
+        // CRn == '100x' && SysOp(op1,CRn,CRm,op2) == Sys_TLBI
+
+        // AT
+        if (CRn == 7 && (CRm == 8 || CRm == 9) && SysOp (op1, 0b0111, CRm, op2) == ARM64_SYSOP_AT) {
+            (*instr)->type = ARM64_INSTRUCTION_AT;
+
+            arm64_addr_trans_t at;
+            if (op1 == 0 && select_bits (CRm, 0, 0) == 0) {
+                if (op2 == 0) at = ARM64_AT_NAME_S1E1R;
+                else if (op2 == 1) at = ARM64_AT_NAME_S1E1W;
+                else if (op2 == 2) at = ARM64_AT_NAME_S1E0R;
+                else if (op2 == 3) at = ARM64_AT_NAME_S1E0W;
+            } else if (op1 == 0 && select_bits (CRm, 0, 0) == 1) {
+                if (op2 == 0) at = ARM64_AT_NAME_S1E1RP;
+                else if (op2 == 1) at = ARM64_AT_NAME_S1E1WP;
+            } else if (op1 == 4 && select_bits (CRm, 0, 0) == 0) {
+                if (op2 == 0) at = ARM64_AT_NAME_S1E2R;
+                else if (op2 == 1) at = ARM64_AT_NAME_S1E2W;
+                else if (op2 == 4) at = ARM64_AT_NAME_S12E1R;
+                else if (op2 == 5) at = ARM64_AT_NAME_S12E1W;
+                else if (op2 == 6) at = ARM64_AT_NAME_S12E0R;
+                else if (op2 == 7) at = ARM64_AT_NAME_S12E0W;
+            } else if (op1 == 6 && select_bits (CRm, 0, 0) == 0) {
+                if (op2 == 0) at = ARM64_AT_NAME_S1E3R;
+                else if (op2 == 1) at = ARM64_AT_NAME_S1E3W;
+            }
+
+            libarch_instruction_add_operand_at_name (instr, at);
+            libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+        // CFP   
+        } else if (op1 == 3 && CRn == 7 && CRm == 3 && op2 == 4) {
+            (*instr)->type = ARM64_INSTRUCTION_CFP;
+
+        // CPP
+        } else if (op1 == 3 && CRn == 7 && CRm == 3 && op2 == 7) {
+            (*instr)->type = ARM64_INSTRUCTION_CPP;
+
+        // DC
+        } else if (CRn == 7 && SysOp (op1, 0b111, CRm, op2) == ARM64_SYSOP_DC) {
+            (*instr)->type = ARM64_INSTRUCTION_DC;
+
+        // DVP
+        } else if (op1 == 3 && CRn == 7 && CRm == 3 && op2 == 5) {
+            (*instr)->type = ARM64_INSTRUCTION_DVP;
+
+        // IC
+        } else if (CRn == 7 && SysOp (op1, 0b0111, CRm, op2) == ARM64_SYSOP_IC) {
+            (*instr)->type = ARM64_INSTRUCTION_IC;
+
+        // TLBI
+        } else if ((CRn >> 1) == 4 && SysOp (op1, CRn, CRm, op2) == ARM64_SYSOP_TLBI) {
+            (*instr)->type = ARM64_INSTRUCTION_TLBI;
+
+        // SYS
+        } else {
+            (*instr)->type = ARM64_INSTRUCTION_SYS;
+
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op1, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRn, ARM64_IMMEDIATE_TYPE_SYSC);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_SYSC);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op2, ARM64_IMMEDIATE_TYPE_UINT);
+
+            // Rt is optional
+            if (Rt != 0b11111) {
+                libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+            }
+        }
+
+
+    // SYSL
+    } else {
+        (*instr)->type = ARM64_INSTRUCTION_SYSL;
+
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op1, ARM64_IMMEDIATE_TYPE_UINT);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRn, ARM64_IMMEDIATE_TYPE_SYSC);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_SYSC);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op2, ARM64_IMMEDIATE_TYPE_UINT);
+    }
+
+    return LIBARCH_RETURN_SUCCESS;
+}
+
+
 libarch_return_t
 disass_branch_exception_sys_instruction (instruction_t *instr)
 {
@@ -500,13 +605,11 @@ disass_branch_exception_sys_instruction (instruction_t *instr)
         decode_barriers (&instr);
 
     } else if (op0 == 6 && (op1 & ~0x70) == 0x1004) {
-        printf ("pstate: %d\n", decode_pstate (&instr));
+        decode_pstate (&instr);
 
-    } else if (op0 == 6 && (op1 >> 7) == 0b0100100) {
-        printf ("system instruction w/ result\n");
-
-    } else if (op0 == 6 && (((op1 >> 8) & ~2) == 0x11)) {
-        printf ("system instruction\n");
+    } else if (op0 == 6 && ((op1 >> 7) & ~4) == 0x21) {
+        printf ("system instruction: %d\n",
+            decode_system_instruction (&instr));
 
     } else if (op0 == 6 && (((op1 >> 8) & ~2) == 0x11)) {
         printf ("system register move\n");

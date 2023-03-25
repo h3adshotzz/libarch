@@ -16,6 +16,8 @@
 #include <stdio.h>
 #include "utils.h"
 
+#include "arm64/arm64-misc.h"
+
 /**
  *  AArch64 Reference Manual shared/functions/common/
  * 
@@ -164,6 +166,94 @@ BFXPreferred (unsigned sf, unsigned uns, unsigned imms, unsigned immr)
 
     // must be UBFX/SBFX alias
     return 1;
+}
+
+int 
+SysOp (unsigned op1, unsigned CRn, unsigned CRm, unsigned op2)
+{
+    unsigned encoding = (op1 << 11);
+    encoding |= (CRn << 7);
+    encoding |= (CRm << 3);
+    encoding |= op2;
+
+    switch(encoding){
+        /* SysOp AT */
+        case 0x3c0:
+        case 0x23c0:
+        case 0x33c0:
+        case 0x3c1:
+        case 0x23c1:
+        case 0x33c1:
+        case 0x3c2:
+        case 0x3c3:
+        case 0x23c4:
+        case 0x23c5:
+        case 0x23c6:
+        case 0x23c7:
+            return ARM64_SYSOP_AT;
+
+        /* SysOP DC */
+        case 0x1ba1:
+        case 0x3b1:
+        case 0x3b2:
+        case 0x1bd1:
+        case 0x3d2:
+        case 0x1bd9:
+        case 0x1bf1:
+        case 0x3f2:
+        case 0x1be9:
+            return ARM64_SYSOP_DC;
+
+        /* SysOp IC */
+        case 0x388:
+        case 0x3a8:
+        case 0x1ba9:
+            return ARM64_SYSOP_IC;
+
+        /* SysOp BRB */
+        case 0xb94:
+        case 0xb95:
+            return ARM64_SYSOP_BRB;
+
+        /* SysOp TLBI */
+        case 0x2401:
+        case 0x2405:
+        case 0x418:
+        case 0x2418:
+        case 0x3418:
+        case 0x419:
+        case 0x2419:
+        case 0x3419:
+        case 0x41a:
+        case 0x41b:
+        case 0x241c:
+        case 0x41d:
+        case 0x241d:
+        case 0x341d:
+        case 0x241e:
+        case 0x41f:
+        case 0x2421:
+        case 0x2425:
+        case 0x438:
+        case 0x2438:
+        case 0x3438:
+        case 0x439:
+        case 0x2439:
+        case 0x3439:
+        case 0x43a:
+        case 0x43b:
+        case 0x243c:
+        case 0x43d:
+        case 0x243d:
+        case 0x343d:
+        case 0x243e:
+        case 0x43f:
+            return ARM64_SYSOP_TLBI;
+
+        /* SysOp Sys */
+        default: 
+            return ARM64_SYSOP_SYS;
+    };
 }
 
 /* --------------------------------------------------------------------------- */

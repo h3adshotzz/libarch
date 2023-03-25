@@ -65,6 +65,9 @@ UInt (unsigned N);
 int
 BFXPreferred (unsigned sf, unsigned uns, unsigned imms, unsigned immr);
 
+int 
+SysOp (unsigned op1, unsigned CRn, unsigned CRm, unsigned op2);
+
 
 unsigned int 
 select_bits (unsigned int val, unsigned int start, unsigned int end);
