@@ -13,7 +13,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "arm64/arm64-conditions.h"
+#include "arm64/arm64-misc.h"
 #include "decoder/branch.h"
 
 static libarch_return_t
@@ -137,6 +137,9 @@ decode_hints (instruction_t **instr)
 
         unsigned ind = op2 >> 1;
         const char *targets[] = {"", "c", "j", "jc"};
+
+        libarch_instruction_add_operand_target (instr, targets[ind]);
+
         mstrappend (&(*instr)->parsed, "bti %s", targets[ind]);
 
     // NOP / YIELD / WFE / WFI / SEV / SEVL / DGH
@@ -413,49 +416,61 @@ decode_pstate (instruction_t **instr)
     unsigned op2 = select_bits ((*instr)->opcode, 5, 7);
     unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
 
-    unsigned char *pstate;
+    unsigned imm = CRm;
 
     /* Unallocated */
     if (Rt != 0b11111) return LIBARCH_RETURN_VOID;
 
-    // CFINV / XAFLAG / AXFLAG
-    if (op1 == 0) {
+    // CFINV
+    if (op1 == 0 && op2 == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_CFINV;
+        (*instr)->parsed = "cfinv";
+    
+    // XAFLAG
+    } else if (op1 == 0 && op2 == 1) {
+        (*instr)->type = ARM64_INSTRUCTION_XAFLAG;
+        (*instr)->parsed = "xaflag";
 
-        // CFINV
-        if (op2 == 0) {
+    // AXFLAG
+    } else if (op1 == 0 && op2 == 2) {
+        (*instr)->type = ARM64_INSTRUCTION_AXFLAG;
+        (*instr)->parsed = "axflag";
 
-        // XAFLAG
-        } else if (op2 == 1) {
-
-        // AXFLAG
-        } else if (op2 == 2) {
-
-
-        }
-
+    // MSR (Immediate)
     } else {
         // MSR (Immediate)
         (*instr)->type = ARM64_INSTRUCTION_MSR;
+        arm64_pstate_t pstate;
+
+        // Alias' SMSTART and SMSTOP are not implemented.
 
         // Calculate pstate
-        if (op1 == 0 && op2 == 5) pstate = "SPSel";
-        else if (op1 == 3 && op2 == 6) pstate = "DAIFSet";
-        else if (op1 == 3 && op2 == 7) pstate = "DAIFClr";
-        else if (op1 == 0 && op2 == 3) pstate = "UAO";
-        else if (op1 == 0 && op2 == 4) pstate = "PAN";
-        else if (op1 == 1 && op2 == 0 && (CRm >> 1) == 0) pstate = "ALLINT";
-        else if (op1 == 3 && op2 == 1) pstate = "SSBS";
-        else if (op1 == 3 && op2 == 2) pstate = "DIT";
-        else if (op1 == 3 && op2 == 3) {
-            if ((CRm >> 1) == 1) pstate = "SVCRSM";
-            else if ((CRm >> 1) == 2) pstate = "SVCRZA";
-            else if ((CRm >> 1) == 3) pstate = "SVCRSMZA";
+        if (op1 == 0 && op2 == 5) pstate = ARM64_PSTATE_SPSEL;
+        else if (op1 == 3 && op2 == 6) pstate = ARM64_PSTATE_DAIFSET;
+        else if (op1 == 3 && op2 == 7) pstate = ARM64_PSTATE_DAIFCLR;
+        else if (op1 == 0 && op2 == 3) pstate = ARM64_PSTATE_UAO;
+        else if (op1 == 0 && op2 == 4) pstate = ARM64_PSTATE_PAN;
+        else if (op1 == 1 && op2 == 0 && (CRm >> 1) == 0) {
+            pstate = ARM64_PSTATE_ALLINT;
+            imm = select_bits (CRm, 0, 1);
         }
-        else if (op1 == 3 && op2 == 4) pstate = "TC0";
+        else if (op1 == 3 && op2 == 1) pstate = ARM64_PSTATE_SSBS;
+        else if (op1 == 3 && op2 == 2) pstate = ARM64_PSTATE_DIT;
+        else if (op1 == 3 && op2 == 3) {
+            if ((CRm >> 1) == 1) pstate = ARM64_PSTATE_SVCRSM;
+            else if ((CRm >> 1) == 2) pstate = ARM64_PSTATE_SVCRZA;
+            else if ((CRm >> 1) == 3) pstate = ARM64_PSTATE_SVCRSMZA;
+
+            imm = select_bits (CRm, 0, 1);
+        }
+        else if (op1 == 3 && op2 == 4) pstate = ARM64_PSTATE_TC0;
+
+        libarch_instruction_add_operand_pstate (instr, pstate);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm, ARM64_IMMEDIATE_TYPE_UINT);
 
         mstrappend (&(*instr)->parsed,
             "msr    %s, #0x%x",
-            pstate, CRm);
+            A64_PSTATE_STR[pstate], imm);
 
     }
 
@@ -485,8 +500,7 @@ disass_branch_exception_sys_instruction (instruction_t *instr)
         decode_barriers (&instr);
 
     } else if (op0 == 6 && (op1 & ~0x70) == 0x1004) {
-        printf ("pstate\n");
-        decode_pstate (&instr);
+        printf ("pstate: %d\n", decode_pstate (&instr));
 
     } else if (op0 == 6 && (op1 >> 7) == 0b0100100) {
         printf ("system instruction w/ result\n");

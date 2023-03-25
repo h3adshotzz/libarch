@@ -32,6 +32,7 @@
 
 #include <arm64/arm64-instructions.h>
 #include <arm64/arm64-registers.h>
+#include <arm64/arm64-misc.h>
 
 #include <instruction.h>
 #include <register.h>
@@ -40,7 +41,7 @@
 
 void instruction_debug (instruction_t *instr, int show_fields)
 {
-    printf ("Parsed:            %s\n", instr->parsed);
+    printf ("Parsed:            %s\n",          instr->parsed);
     printf ("Opcode:            0x%08x\n",      instr->opcode);
     printf ("Decode Group:      %d\n",          instr->group);
     printf ("Instruction Type:  %s (%d)\n",     A64_INSTRUCTIONS_STR[instr->type], instr->type);
@@ -65,6 +66,12 @@ void instruction_debug (instruction_t *instr, int show_fields)
             printf ("SHIFT (%d)\n", op->op_type);
             printf ("\t[%d]: shift_type:    %d\n", i, op->shift_type);
             printf ("\t[%d]: shift:         %d\n", i, op->shift);
+        } else if (op->op_type == ARM64_OPERAND_TYPE_TARGET) {
+            printf ("TARGET (%d)\n", op->op_type);
+            printf ("\t[%d]: target:        %s\n", i, op->target);
+        } else if (op->op_type == ARM64_OPERAND_TYPE_PSTATE) {
+            printf ("PSTATE (%d)\n", op->op_type);
+            printf ("\t[%d]: pstate:        %d\n", i, op->pstate);
         }
     }
 
@@ -80,7 +87,13 @@ void instruction_debug (instruction_t *instr, int show_fields)
 
 void create_string (instruction_t *instr)
 {
-    printf ("%s\t", A64_INSTRUCTIONS_STR[instr->type]);
+    /* Handle Mnemonic */
+    char *mnemonic = A64_INSTRUCTIONS_STR[instr->type];
+    if (instr->cond) printf ("%s.%s\t", mnemonic, A64_CONDITIONS_STR[instr->cond]);
+    else printf ("%s\t", mnemonic);
+
+
+    /* Handle Operands */
     for (int i = 0; i < instr->operands_len; i++) {
         operand_t *op = &instr->operands[i];
 
@@ -123,6 +136,18 @@ void create_string (instruction_t *instr)
             else continue;
 
             printf ("%s #%d", shift, op->shift);
+            goto check_comma;
+        }
+
+        /* Target */
+        if (op->op_type == ARM64_OPERAND_TYPE_TARGET) {
+            if (op->target) printf ("%s", op->target);
+            goto check_comma;
+        }
+
+        /* PSTATE */
+        if (op->op_type == ARM64_OPERAND_TYPE_PSTATE) {
+            printf ("%s", A64_PSTATE_STR[op->pstate]);
         }
 
 check_comma:
@@ -135,7 +160,7 @@ void disassemble (uint32_t *data, uint32_t len, uint64_t base, int dbg)
 {
     printf ("base: 0x%llx\n", base);
     for (int i = 0; i < len; i++) {
-        if (data[i] == NULL) continue;
+        //if (data[i] == NULL) continue;
         instruction_t *in = libarch_instruction_create (data[i], base);
 
         libarch_disass (&in);
@@ -150,13 +175,19 @@ void disassemble (uint32_t *data, uint32_t len, uint64_t base, int dbg)
     }
 }
 
+#define SWAP_INT(a)     ( ((a) << 24) | \
+                        (((a) << 8) & 0x00ff0000) | \
+                        (((a) >> 8) & 0x0000ff00) | \
+                        ((unsigned int)(a) >> 24) )
+
 int main (int argc, char *argv[])
 {
     printf (BLUE "\n    LIBARCH Version %s: %s; root:%s/%s_%s %s\n\n" RESET,
             LIBARCH_BUILD_VERSION, __TIMESTAMP__, LIBARCH_SOURCE_VERSION, LIBARCH_BUILD_TYPE, BUILD_ARCH_CAP, BUILD_ARCH);
 
     if (argc == 2) {
-        uint32_t *opcode[] = { strtol(argv[1], NULL, 16), NULL };
+        uint32_t input = SWAP_INT(strtol(argv[1], NULL, 16));
+        uint32_t *opcode[] = { input, NULL };
         disassemble (opcode, 1, 0, 1);
     } else {
         printf ("disassembling %s\n", argv[1]);
@@ -171,19 +202,28 @@ int main (int argc, char *argv[])
             printf ("shit\n");
             return 1;
         }
-        uint32_t aligned_size = size / sizeof (uint32_t);
-        printf ("aligned: %d\n", aligned_size);
 
-        uint32_t *ins_data = malloc (aligned_size);
+        uint64_t base = 0xfffffff007b20000;
         for (int i = 0; i < atoi(argv[2]); i++) {
-            //ins_data[i] = *(uint32_t *) data;
-            instruction_t *in = libarch_instruction_create (*(uint32_t *) data, 0xfffffff007b20000);
+
+            uint32_t opcode = *(uint32_t *) (data + (i * 4));
+            instruction_t *in = libarch_instruction_create (opcode, base);
+            libarch_disass (&in);
+
+            printf ("0x%016llx  %08x\t", in->addr, SWAP_INT(in->opcode));
+            create_string (in);
+            base += 4;
+
+            /*//ins_data[i] = *(uint32_t *) data;
+            instruction_t *in = libarch_instruction_create (*(uint32_t *) data, base);
             libarch_disass (&in);
 
             //printf ("0x%016llx  %08x\t%s\n", in->addr, in->opcode, in->parsed);
+            printf ("0x%016llx  %08x\t", in->addr, in->opcode);
             create_string (in);
 
             data += sizeof (uint32_t);
+            base += 4;*/
         }
 
         //uint64_t base = 0; //0x0000000100002d04;

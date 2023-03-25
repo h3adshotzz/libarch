@@ -24,6 +24,7 @@
 
 #include "arm64/arm64-instructions.h"
 #include "arm64/arm64-registers.h"
+#include "arm64/arm64-misc.h"
 
 
 #define ARM64_NONE                              0
@@ -53,6 +54,8 @@
 #define ARM64_OPERAND_TYPE_REGISTER             15
 #define ARM64_OPERAND_TYPE_SHIFT                16
 #define ARM64_OPERAND_TYPE_IMMEDIATE            17
+#define ARM64_OPERAND_TYPE_TARGET               18
+#define ARM64_OPERAND_TYPE_PSTATE               19
 
 typedef struct operand_t
 {
@@ -71,6 +74,12 @@ typedef struct operand_t
     /* op_type == ARM64_OPERAND_TYPE_IMMEDIATE */
     uint64_t        imm_bits; 
     uint8_t         imm_type;
+
+    /* op_type == ARM64_OPERAND_TYPE_TARGET */
+    char           *target;
+
+    /* op_type == ARM64_OPERAND_TYPE_PSTATE */
+    arm64_pstate_t  pstate;
 
 } operand_t;
 
@@ -110,7 +119,9 @@ libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64
 extern libarch_return_t
 libarch_instruction_add_field (instruction_t **instr, int field);
 extern libarch_return_t
-libarch_instruction_add_parsed_field (instruction_t **instr, char *field);
+libarch_instruction_add_operand_target (instruction_t **instr, char *target);
+extern libarch_return_t
+libarch_instruction_add_operand_pstate (instruction_t **instr, arm64_pstate_t pstate);
 
 
 extern instruction_t *

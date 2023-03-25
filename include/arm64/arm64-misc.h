@@ -13,10 +13,37 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef __LIBARCH_ARM64_CONDITIONS_H__
-#define __LIBARCH_ARM64_CONDITIONS_H__
+#ifndef __LIBARCH_ARM64_MISC_H__
+#define __LIBARCH_ARM64_MISC_H__
 
 #include <stdlib.h>
+
+
+/* pstate values */
+typedef enum arm64_pstate_t
+{
+    ARM64_PSTATE_SPSEL = 0,
+    ARM64_PSTATE_DAIFSET,
+    ARM64_PSTATE_DAIFCLR,
+    ARM64_PSTATE_UAO,
+    ARM64_PSTATE_PAN,
+    ARM64_PSTATE_ALLINT,
+    ARM64_PSTATE_SSBS,
+    ARM64_PSTATE_DIT,
+    ARM64_PSTATE_SVCRSM,
+    ARM64_PSTATE_SVCRZA,
+    ARM64_PSTATE_SVCRSMZA,
+    ARM64_PSTATE_TC0,
+} arm64_pstate_t;
+
+static const char *A64_PSTATE_STR[] =
+{
+    "SPSel", "DAIFSet", "DAIFClr", "UAO",
+    "PAN", "ALLINT", "SSBS", "DIT", "SVCRSM",
+    "SVCRZA", "SVCRSMZA", "TC0",
+};
+static uint64_t A64_PSTATE_STR_LEN = sizeof (A64_PSTATE_STR) / sizeof (*A64_PSTATE_STR);
+
 
 /* General Conditions */
 typedef enum arm64_cond_t
@@ -58,4 +85,4 @@ static const char *A64_MEM_BARRIER_CONDITIONS_STR[] =
 static uint64_t A64_MEM_BARRIER_CONDITIONS_STR_LEN = sizeof (A64_MEM_BARRIER_CONDITIONS_STR) / sizeof (*A64_MEM_BARRIER_CONDITIONS_STR);
 
 
-#endif /* __libarch_arm64_conditions_h__ */
+#endif /* __libarch_arm64_misc_h__ */
