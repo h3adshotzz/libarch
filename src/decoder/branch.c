@@ -819,6 +819,39 @@ decode_compare_and_branch_immediate (instruction_t **instr)
     return LIBARCH_RETURN_SUCCESS;
 }
 
+static libarch_return_t
+decode_test_and_branch_immediate (instruction_t **instr)
+{
+    unsigned b5 = select_bits ((*instr)->opcode, 31, 31);
+    unsigned op = select_bits ((*instr)->opcode, 24, 24);
+    unsigned b40 = select_bits ((*instr)->opcode, 19, 23);
+    unsigned imm14 = select_bits ((*instr)->opcode, 5, 18);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    /* Determine instruction size, and register width */
+    uint32_t len;
+    unsigned size;
+    const char **regs;
+
+    if (b5 == 1) _SET_64 (size, regs, len);
+    else _SET_32 (size, regs, len);
+
+    /* Extend the pc-relative immediate value */
+    long label = (signed) sign_extend (imm14 << 2, 64) + (*instr)->addr;
+    unsigned imm = (b5 << 6) | b40;
+
+    // TBZ
+    if (op == 0) (*instr)->type = ARM64_INSTRUCTION_TBZ;
+    // TBNZ
+    else (*instr)->type = ARM64_INSTRUCTION_TBNZ;
+
+    libarch_instruction_add_operand_register (instr, Rt, size, ARM64_REGISTER_TYPE_GENERAL);
+    libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm, ARM64_IMMEDIATE_TYPE_UINT);
+    libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG);
+    
+    return LIBARCH_RETURN_SUCCESS;
+}
+
 libarch_return_t
 disass_branch_exception_sys_instruction (instruction_t *instr)
 {
@@ -860,7 +893,7 @@ disass_branch_exception_sys_instruction (instruction_t *instr)
         if ((op1 >> 13) == 0) 
             decode_compare_and_branch_immediate (&instr);
         else
-            printf ("test and branch (immediate)\n");
+            decode_test_and_branch_immediate (&instr);
     } else {
         // HINT
         instr->type = ARM64_INSTRUCTION_HINT;
