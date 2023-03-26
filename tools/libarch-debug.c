@@ -207,7 +207,7 @@ int main (int argc, char *argv[])
     if (argc == 2) {
         uint32_t input = SWAP_INT(strtol(argv[1], NULL, 16));
         uint32_t *opcode[] = { input, NULL };
-        disassemble (opcode, 1, 0, 1);
+        disassemble (opcode, 1, 0xfffffff007b20000, 1);
     } else {
         printf ("disassembling %s\n", argv[1]);
 
