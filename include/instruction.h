@@ -51,15 +51,16 @@
 #define ARM64_IMMEDIATE_TYPE_ULONG              13
 #define ARM64_IMMEDIATE_TYPE_FLOAT              14
 #define ARM64_IMMEDIATE_TYPE_SYSC               15
+#define ARM64_IMMEDIATE_TYPE_SYSS               16
 
 /* Operand type flags */
-#define ARM64_OPERAND_TYPE_REGISTER             16
-#define ARM64_OPERAND_TYPE_SHIFT                17
-#define ARM64_OPERAND_TYPE_IMMEDIATE            18
-#define ARM64_OPERAND_TYPE_TARGET               19
-#define ARM64_OPERAND_TYPE_PSTATE               20
-#define ARM64_OPERAND_TYPE_AT_NAME              21
-#define ARM64_OPERAND_TYPE_TLBI_OP              22
+#define ARM64_OPERAND_TYPE_REGISTER             17
+#define ARM64_OPERAND_TYPE_SHIFT                18
+#define ARM64_OPERAND_TYPE_IMMEDIATE            19
+#define ARM64_OPERAND_TYPE_TARGET               20
+#define ARM64_OPERAND_TYPE_PSTATE               21
+#define ARM64_OPERAND_TYPE_AT_NAME              22
+#define ARM64_OPERAND_TYPE_TLBI_OP              23
 
 typedef struct operand_t
 {

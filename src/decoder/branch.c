@@ -565,6 +565,47 @@ decode_system_instruction (instruction_t **instr)
     return LIBARCH_RETURN_SUCCESS;
 }
 
+static libarch_return_t
+decode_system_register_move (instruction_t **instr)
+{
+    unsigned L = select_bits ((*instr)->opcode, 21, 21);
+    unsigned o0 = select_bits ((*instr)->opcode, 19, 19);
+    unsigned op1 = select_bits ((*instr)->opcode, 16, 18);
+    unsigned CRn = select_bits ((*instr)->opcode, 12, 15);
+    unsigned CRm = select_bits ((*instr)->opcode, 8, 11);
+    unsigned op2 = select_bits ((*instr)->opcode, 5, 7);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    unsigned sysreg = ((((((2 + o0) << 14) | (op1 << 11)) | (CRn << 7)) | (CRm << 3)) | op2);
+
+    // MSR (Register)
+    if (L == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_MSR;
+
+        /* If the sysreg is recognised, then add the register as ARM64_REGISTER_TYPE_SYSTEM */
+        if (libarch_get_system_register (sysreg)) {
+            libarch_instruction_add_operand_register (instr, sysreg, 64, ARM64_REGISTER_TYPE_SYSTEM);
+        } else {
+
+            // S<op0>_<op1>_<Cn>_<Cm>_<op2>
+            libarch_instruction_add_operand_immediate (instr, (o0 == 0) ? 2 : 3, ARM64_IMMEDIATE_TYPE_SYSS);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op1, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRn, ARM64_IMMEDIATE_TYPE_SYSC);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_SYSC);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op2, ARM64_IMMEDIATE_TYPE_UINT);
+
+        }
+
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+    // MRS
+    } else {
+        (*instr)->type = ARM64_INSTRUCTION_MRS;
+
+    }
+    return LIBARCH_RETURN_SUCCESS;
+}
+
 
 libarch_return_t
 disass_branch_exception_sys_instruction (instruction_t *instr)
@@ -592,11 +633,10 @@ disass_branch_exception_sys_instruction (instruction_t *instr)
         decode_pstate (&instr);
 
     } else if (op0 == 6 && ((op1 >> 7) & ~4) == 0x21) {
-        printf ("system instruction: %d\n",
-            decode_system_instruction (&instr));
+        decode_system_instruction (&instr);
 
     } else if (op0 == 6 && (((op1 >> 8) & ~2) == 0x11)) {
-        printf ("system register move\n");
+        decode_system_register_move (&instr);
 
     } else if (op0 == 6 && ((op1 >> 13) == 1)) {
         printf ("unconditional branch (register)\n");

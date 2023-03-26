@@ -21,7 +21,8 @@
 
 extern const char *
 libarch_get_general_register (arm64_reg_t reg, const char **list, uint64_t len);
-
+extern const char *
+libarch_get_system_register (arm64_reg_t reg);
 
 
 

@@ -106,6 +106,8 @@ void create_string (instruction_t *instr)
                 reg = libarch_get_general_register (op->reg,
                     (op->reg_size == 64) ? A64_REGISTERS_GP_64 : A64_REGISTERS_GP_32,
                     (op->reg_size == 64) ? A64_REGISTERS_GP_64_LEN : A64_REGISTERS_GP_32_LEN);
+            } else if (op->reg_type == ARM64_REGISTER_TYPE_SYSTEM) {
+                reg = libarch_get_system_register (op->reg);
             } // ... other types
 
 
@@ -118,6 +120,8 @@ void create_string (instruction_t *instr)
         if (op->op_type == ARM64_OPERAND_TYPE_IMMEDIATE) {
             if (op->imm_type == ARM64_IMMEDIATE_TYPE_SYSC)
                 printf ("c%d", op->imm_bits);
+            else if (op->imm_type == ARM64_IMMEDIATE_TYPE_SYSS)
+                printf ("s%d", op->imm_bits);
             else if (instr->type == ARM64_INSTRUCTION_SYS || instr->type == ARM64_INSTRUCTION_SYSL)
                 printf ("%d", op->imm_bits);
             else if (op->imm_type == ARM64_IMMEDIATE_TYPE_LONG || op->imm_type == ARM64_IMMEDIATE_TYPE_ULONG)
