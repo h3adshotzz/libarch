@@ -81,9 +81,9 @@ decode_exception_generation (instruction_t **instr)
         if (opc == 1) (*instr)->type = ARM64_INSTRUCTION_BRK;
         else if (opc == 2) (*instr)->type = ARM64_INSTRUCTION_HLT;
     } else if (opc == 5) {
-        if (LL == 1) (*instr)->type == ARM64_INSTRUCTION_DCPS1;
-        else if (LL == 2) (*instr)->type == ARM64_INSTRUCTION_DCPS2;
-        else if (LL == 3) (*instr)->type == ARM64_INSTRUCTION_DCPS3;
+        if (LL == 1) (*instr)->type = ARM64_INSTRUCTION_DCPS1;
+        else if (LL == 2) (*instr)->type = ARM64_INSTRUCTION_DCPS2;
+        else if (LL == 3) (*instr)->type = ARM64_INSTRUCTION_DCPS3;
     }
 
     mstrappend (&(*instr)->parsed,
@@ -602,7 +602,174 @@ decode_system_register_move (instruction_t **instr)
     } else {
         (*instr)->type = ARM64_INSTRUCTION_MRS;
 
+        /* only difference between MSR and MRS is that with MRS the register Xt comes first */
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+        /* If the sysreg is recognised, then add the register as ARM64_REGISTER_TYPE_SYSTEM */
+        if (libarch_get_system_register (sysreg)) {
+            libarch_instruction_add_operand_register (instr, sysreg, 64, ARM64_REGISTER_TYPE_SYSTEM);
+        } else {
+
+            // S<op0>_<op1>_<Cn>_<Cm>_<op2>
+            libarch_instruction_add_operand_immediate (instr, (o0 == 0) ? 2 : 3, ARM64_IMMEDIATE_TYPE_SYSS);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op1, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRn, ARM64_IMMEDIATE_TYPE_SYSC);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_SYSC);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op2, ARM64_IMMEDIATE_TYPE_UINT);
+
+        }
+
     }
+    return LIBARCH_RETURN_SUCCESS;
+}
+
+static libarch_return_t
+decode_unconditional_branch_register (instruction_t **instr)
+{
+    unsigned opc = select_bits ((*instr)->opcode, 21, 24);
+    unsigned op2 = select_bits ((*instr)->opcode, 16, 20);
+    unsigned op3 = select_bits ((*instr)->opcode, 10, 15);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned op4 = select_bits ((*instr)->opcode, 0, 4);
+
+    /* Unallocated */
+    if (op2 != 0b11111) return LIBARCH_RETURN_VOID;
+    if (opc == 0 && op3 == 0 && op4 != 0) return LIBARCH_RETURN_VOID;
+    if (opc == 0 && op3 == 1) return LIBARCH_RETURN_VOID;
+    if (opc == 0 && op3 == 2 && op4 != 0b11111) return LIBARCH_RETURN_VOID;
+    if (opc == 0 && op3 == 3 && op4 != 0b11111) return LIBARCH_RETURN_VOID;
+    if (opc == 0 && (op3 >> 2) == 1) return LIBARCH_RETURN_VOID;
+    if (opc == 0 && (op3 >> 3) == 1) return LIBARCH_RETURN_VOID;
+    if (opc == 0 && (op3 >> 4) == 1) return LIBARCH_RETURN_VOID;
+    if (opc == 0 && (op3 >> 5) == 1) return LIBARCH_RETURN_VOID;
+    if (opc == 1 && op3 == 0 && op4 != 0) return LIBARCH_RETURN_VOID;
+    if (opc == 1 && op3 == 1) return LIBARCH_RETURN_VOID;
+    if (opc == 1 && op3 == 2) return LIBARCH_RETURN_VOID;
+    // theres so many i can't be bothered.
+
+    // BR
+    if (opc == 0 && op2 == 0b11111 && op3 == 0 && op4 == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_BR;
+
+        libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+    // BRAA, BRAAZ, BRAB, BRABZ - Key A
+    } else if ((opc == 0 || opc == 8) && op2 == 0b11111 && (op3 == 2 || op3 == 3) && op4 == 0b11111) {
+        
+        // Special bits for these instructions
+        unsigned Z = select_bits ((*instr)->opcode, 24, 24);
+        unsigned M = select_bits ((*instr)->opcode, 10, 10);
+        unsigned Rm = op4;
+
+        // BRAAZ
+        if (Z == 0 && M == 0 && Rm == 0b11111) {
+            (*instr)->type = ARM64_INSTRUCTION_BRAAZ;
+
+            libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+        // BRAA
+        } else if (Z == 1 && M == 0) {
+            (*instr)->type = ARM64_INSTRUCTION_BRAA;
+
+            libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_register (instr, Rm, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+        // BRABZ
+        } else if (Z == 0 && M == 1 && Rm == 0b11111) {
+            (*instr)->type = ARM64_INSTRUCTION_BRABZ;
+
+            libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+        // BRAB
+        } else {
+            (*instr)->type = ARM64_INSTRUCTION_BRAB;
+
+            libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_register (instr, Rm, 64, ARM64_REGISTER_TYPE_GENERAL);
+        }
+
+    // BLR
+    } else if (opc == 1 && op2 == 0b11111 && op3 == 0 && op4 == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_BLR;
+
+        libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+    // BLRAA, BLRAAZ, BLRAB, BLRABZ - Key A, Zero Modifier
+    } else if ((opc == 1 || opc == 9) && op2 == 0b11111 && (op3 == 2 || op3 == 3) && op4 == 0b11111) {
+
+        // Special bits for these instructions
+        unsigned Z = select_bits ((*instr)->opcode, 24, 24);
+        unsigned M = select_bits ((*instr)->opcode, 10, 10);
+        unsigned Rm = op4;
+
+        // BLRAAZ
+        if (Z == 0 && M == 0 && Rm == 0b11111) {
+            (*instr)->type = ARM64_INSTRUCTION_BLRAAZ;
+
+            libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+        // BLRAA
+        } else if (Z == 1 && M == 0) {
+            (*instr)->type = ARM64_INSTRUCTION_BLRAA;
+
+            libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_register (instr, Rm, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+        // BLRABZ
+        } else if (Z == 0 && M == 1 && Rm == 0b11111) {
+            (*instr)->type = ARM64_INSTRUCTION_BLRABZ;
+
+            libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+        // BLRAB
+        } else {
+            (*instr)->type = ARM64_INSTRUCTION_BLRAB;
+
+            libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+            libarch_instruction_add_operand_register (instr, Rm, 64, ARM64_REGISTER_TYPE_GENERAL);
+        }
+
+    // RET
+    } else if (opc == 2 && op2 == 0b11111 && op3 == 0 && op4 == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_RET;
+
+        if (Rn < 30)
+            libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+    // RETAA, RETAB - RETAA Variant
+    } else if (opc == 2 && op2 == 0b11111 && (op3 == 2 || op3 == 3) && Rn == 0b11111 && op4 == 0b11111) {
+
+        unsigned M = select_bits ((*instr)->opcode, 10, 10);
+
+        // RETAA
+        if (M == 0) {
+            (*instr)->type = ARM64_INSTRUCTION_RETAA;
+        } else {
+            (*instr)->type = ARM64_INSTRUCTION_RETAB;
+        }
+
+
+    // ERET
+    } else if (opc == 4 && op2 == 0b11111 && op3 == 0 && Rn == 0b11111 && op4 == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_ERET;
+
+    // ERETAA, ERETAB - ERETAA Variant
+    } else if (opc == 4 && op2 == 0b11111 && (op3 == 2 || op3 == 3) && Rn == 0b11111 && op4 == 0b11111) {
+        
+        unsigned M = select_bits ((*instr)->opcode, 10, 10);
+
+        // ERETAA
+        if (M == 0) {
+            (*instr)->type = ARM64_INSTRUCTION_ERETAA;
+        } else {
+            (*instr)->type = ARM64_INSTRUCTION_ERETAB;
+        }
+    
+    // DRPS
+    } else if (opc == 5 && op2 == 0b11111 && op3 == 0 && Rn == 0b11111 && op4 == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_DRPS;
+    }
+
     return LIBARCH_RETURN_SUCCESS;
 }
 
@@ -639,7 +806,7 @@ disass_branch_exception_sys_instruction (instruction_t *instr)
         decode_system_register_move (&instr);
 
     } else if (op0 == 6 && ((op1 >> 13) == 1)) {
-        printf ("unconditional branch (register)\n");
+        decode_unconditional_branch_register (&instr);
 
     } else if ((op0 & ~4) == 0) {
         printf ("unconditional branch (immediate)\n");
