@@ -72,7 +72,13 @@ void instruction_debug (instruction_t *instr, int show_fields)
             printf ("\t[%d]: target:        %s\n", i, op->target);
         } else if (op->op_type == ARM64_OPERAND_TYPE_PSTATE) {
             printf ("PSTATE (%d)\n", op->op_type);
-            printf ("\t[%d]: pstate:        %d\n", i, op->pstate);
+            printf ("\t[%d]: pstate:        %d\n", i, op->extra);
+        } else if (op->op_type == ARM64_OPERAND_TYPE_AT_NAME) {
+            printf ("AT NAME (%d)\n", op->op_type);
+            printf ("\t[%d]: pstate:        %d\n", i, op->extra);
+        } else if (op->op_type == ARM64_OPERAND_TYPE_TLBI_OP) {
+            printf ("TLBI (%d)\n", op->op_type);
+            printf ("\t[%d]: pstate:        %d\n", i, op->extra);
         }
     }
 
@@ -91,6 +97,7 @@ void create_string (instruction_t *instr)
     /* Handle Mnemonic */
     char *mnemonic = A64_INSTRUCTIONS_STR[instr->type];
     if (instr->cond) printf ("%s.%s\t", mnemonic, A64_CONDITIONS_STR[instr->cond]);
+    else if (instr->spec) printf ("%s.%s\t", mnemonic, A64_VEC_SPECIFIER_STR[instr->spec]);
     else printf ("%s\t", mnemonic);
 
 
@@ -108,6 +115,8 @@ void create_string (instruction_t *instr)
                     (op->reg_size == 64) ? A64_REGISTERS_GP_64_LEN : A64_REGISTERS_GP_32_LEN);
             } else if (op->reg_type == ARM64_REGISTER_TYPE_SYSTEM) {
                 reg = libarch_get_system_register (op->reg);
+            } else if (op->reg_type == ARM64_REGISTER_TYPE_FLOATING_POINT) {
+                if (op->reg_size == 128) reg = libarch_get_general_register (op->reg, A64_REGISTERS_FP_128, A64_REGISTERS_FP_128_LEN); 
             } // ... other types
 
 
@@ -156,17 +165,17 @@ void create_string (instruction_t *instr)
 
         /* PSTATE */
         if (op->op_type == ARM64_OPERAND_TYPE_PSTATE) {
-            printf ("%s", A64_PSTATE_STR[op->pstate]);
+            printf ("%s", A64_PSTATE_STR[op->extra]);
         }
 
         /* Address Translate Name */
         if (op->op_type == ARM64_OPERAND_TYPE_AT_NAME) {
-            printf ("%s", A64_AT_NAMES_STR[op->at_name]);
+            printf ("%s", A64_AT_NAMES_STR[op->extra]);
         }
 
         /* TLBI Ops */
         if (op->op_type == ARM64_OPERAND_TYPE_TLBI_OP) {
-            printf ("%s", A64_TLBI_OPS_STR[op->tlbi_op]);
+            printf ("%s", A64_TLBI_OPS_STR[op->extra]);
         }
 
 check_comma:
@@ -185,7 +194,7 @@ void disassemble (uint32_t *data, uint32_t len, uint64_t base, int dbg)
         libarch_disass (&in);
 
         if (dbg) {
-            instruction_debug (in, 0);
+            instruction_debug (in, 1);
             create_string (in);
         }
         else printf ("0x%016llx  %08x\t%s\n", in->addr, in->opcode, in->parsed);

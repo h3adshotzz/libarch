@@ -83,14 +83,16 @@ typedef struct operand_t
     /* op_type == ARM64_OPERAND_TYPE_TARGET */
     char               *target;
 
-    /* op_type == ARM64_OPERAND_TYPE_PSTATE */
-    arm64_pstate_t      pstate;
-
-    /* op_type == ARM64_OPERAND_TYPE_AT_NAME */
-    arm64_addr_trans_t  at_name;
-
-    /* op_type == ARM64_OPERAND_TYPE_TLBI_OP */
-    arm64_tlbi_op_t     tlbi_op;
+    /** NOTE: These aren't used together, so could be replaced with an `extra` value,
+     *  they all store integers?
+    */
+    
+    /**
+     *  op_type == ARM64_OPERAND_TYPE_PSTATE
+     *  op_type == ARM64_OPERAND_TYPE_AT_NAME
+     *  op_type == ARM64_OPERAND_TYPE_TLBI_OP
+    */
+    int                 extra;
 
 } operand_t;
 
@@ -104,7 +106,8 @@ typedef struct instruction_t
     /* Decode Group and Instruction type */
     uint8_t             group;
     arm64_instr_t       type;
-    uint32_t            cond;
+    uint32_t            cond;           // Branch condition
+    uint32_t            spec;           // Vector Arrangement Specifier
 
     /* Operands */
     operand_t          *operands;
@@ -131,6 +134,10 @@ extern libarch_return_t
 libarch_instruction_add_field (instruction_t **instr, int field);
 extern libarch_return_t
 libarch_instruction_add_operand_target (instruction_t **instr, char *target);
+
+extern libarch_return_t
+libarch_instruction_add_operand_extra (instruction_t **instr, int type, int val);
+
 extern libarch_return_t
 libarch_instruction_add_operand_pstate (instruction_t **instr, arm64_pstate_t pstate);
 extern libarch_return_t

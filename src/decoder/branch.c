@@ -463,7 +463,7 @@ decode_pstate (instruction_t **instr)
         }
         else if (op1 == 3 && op2 == 4) pstate = ARM64_PSTATE_TC0;
 
-        libarch_instruction_add_operand_pstate (instr, pstate);
+        libarch_instruction_add_operand_extra (instr, ARM64_OPERAND_TYPE_PSTATE, pstate);
         libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm, ARM64_IMMEDIATE_TYPE_UINT);
 
         mstrappend (&(*instr)->parsed,
@@ -513,7 +513,7 @@ decode_system_instruction (instruction_t **instr)
                 else if (op2 == 1) at = ARM64_AT_NAME_S1E3W;
             }
 
-            libarch_instruction_add_operand_at_name (instr, at);
+            libarch_instruction_add_operand_extra (instr, ARM64_OPERAND_TYPE_AT_NAME, at);
             libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
 
         // TLBI
@@ -521,7 +521,7 @@ decode_system_instruction (instruction_t **instr)
             (*instr)->type = ARM64_INSTRUCTION_TLBI;
 
             arm64_tlbi_op_t tlbi = get_tlbi (op1, CRn, CRm, op2);
-            libarch_instruction_add_operand_tlbi_op (instr, tlbi);
+            libarch_instruction_add_operand_extra (instr, ARM64_OPERAND_TYPE_TLBI_OP, tlbi);
 
             // Rt is optional
             if (Rt != 0b11111)

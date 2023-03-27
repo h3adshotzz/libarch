@@ -3,6 +3,7 @@
         "util.h": "c",
         "ios": "c",
         "utils.h": "c",
-        "__locale": "c"
+        "__locale": "c",
+        "arm64-registers.h": "c"
     }
 }

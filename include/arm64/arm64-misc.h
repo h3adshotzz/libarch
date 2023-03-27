@@ -28,6 +28,29 @@ enum {
     ARM64_SYSOP_SYS,
 };
 
+/* vector arrangement specifiers */
+typedef enum arm64_vec_specifier_t
+{
+    ARM64_VEC_ARRANGEMENT_B = 0,
+    ARM64_VEC_ARRANGEMENT_8B,
+    ARM64_VEC_ARRANGEMENT_16B,
+    ARM64_VEC_ARRANGEMENT_H,
+    ARM64_VEC_ARRANGEMENT_4H,
+    ARM64_VEC_ARRANGEMENT_8H,
+    ARM64_VEC_ARRANGEMENT_S,
+    ARM64_VEC_ARRANGEMENT_2S,
+    ARM64_VEC_ARRANGEMENT_4S,
+    ARM64_VEC_ARRANGEMENT_D,
+    ARM64_VEC_ARRANGEMENT_2D,
+} arm64_vec_specifier_t;
+
+static const char *A64_VEC_SPECIFIER_STR[] =
+{
+    "b", "8b", "16b", "h", "4h", "8h", "s", "2s",
+    "4s", "d", "2d",
+};
+static uint64_t A64_VEC_SPECIFIER_STR_LEN = sizeof (A64_VEC_SPECIFIER_STR) / sizeof (*A64_VEC_SPECIFIER_STR);
+
 /* address translation names */
 typedef enum arm64_addr_trans_t
 {

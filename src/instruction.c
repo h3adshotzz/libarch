@@ -17,6 +17,7 @@
 
 #include "instruction.h"
 #include "decoder/data-processing.h"
+#include "decoder/load-and-store.h"
 #include "decoder/branch.h"
 
 
@@ -106,7 +107,7 @@ libarch_instruction_add_operand_target (instruction_t **instr, char *target)
 }
 
 libarch_return_t
-libarch_instruction_add_operand_pstate (instruction_t **instr, arm64_pstate_t pstate)
+libarch_instruction_add_operand_extra (instruction_t **instr, int type, int val)
 {
     /* Alloc/Realloc operands array */
     if ((*instr)->operands_len == 0) {
@@ -117,44 +118,8 @@ libarch_instruction_add_operand_pstate (instruction_t **instr, arm64_pstate_t ps
     }
 
     /* Add the new operand */
-    (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_PSTATE;
-    (*instr)->operands[(*instr)->operands_len - 1].pstate = pstate;
-
-    return LIBARCH_RETURN_SUCCESS;
-}
-
-libarch_return_t
-libarch_instruction_add_operand_at_name (instruction_t **instr, arm64_addr_trans_t at)
-{
-    /* Alloc/Realloc operands array */
-    if ((*instr)->operands_len == 0) {
-        (*instr)->operands = malloc (sizeof (operand_t) * ++(*instr)->operands_len);
-    } else {
-        operand_t *new = (*instr)->operands = realloc ((*instr)->operands, sizeof (operand_t) * ++(*instr)->operands_len);
-        (*instr)->operands = new;
-    }
-
-    /* Add the new operand */
-    (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_AT_NAME;
-    (*instr)->operands[(*instr)->operands_len - 1].at_name = at;
-
-    return LIBARCH_RETURN_SUCCESS;
-}
-
-libarch_return_t
-libarch_instruction_add_operand_tlbi_op (instruction_t **instr, arm64_tlbi_op_t tlbi)
-{
-    /* Alloc/Realloc operands array */
-    if ((*instr)->operands_len == 0) {
-        (*instr)->operands = malloc (sizeof (operand_t) * ++(*instr)->operands_len);
-    } else {
-        operand_t *new = (*instr)->operands = realloc ((*instr)->operands, sizeof (operand_t) * ++(*instr)->operands_len);
-        (*instr)->operands = new;
-    }
-
-    /* Add the new operand */
-    (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_TLBI_OP;
-    (*instr)->operands[(*instr)->operands_len - 1].tlbi_op = tlbi;
+    (*instr)->operands[(*instr)->operands_len - 1].op_type = type;
+    (*instr)->operands[(*instr)->operands_len - 1].extra = val;
 
     return LIBARCH_RETURN_SUCCESS;
 }
@@ -217,6 +182,7 @@ libarch_disass (instruction_t **instr)
     } else if ((op1 & ~10) == 4) {
         // Load and Store
         (*instr)->group = ARM64_DECODE_GROUP_LOAD_AND_STORE;
+        disass_load_and_store_instruction (*instr);
     } else if ((op1 & ~8) == 5) {
         // Data Processing - Register
         (*instr)->group = ARM64_DECODE_GROUP_DATA_PROCESS_REGISTER;
