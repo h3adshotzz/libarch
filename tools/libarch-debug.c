@@ -47,7 +47,7 @@ void instruction_debug (instruction_t *instr, int show_fields)
     printf ("Decode Group:      %d\n",          instr->group);
     printf ("Instruction Type:  %s (%d)\n",     A64_INSTRUCTIONS_STR[instr->type], instr->type);
     printf ("Address:           0x%016x\n",     instr->addr);
-    base10 (instr->opcode, 31);
+    base10 (instr->opcode, 29);
 
     printf ("Operands:          %d\n", instr->operands_len);
     for (int i = 0; i < instr->operands_len; i++) {
@@ -96,8 +96,8 @@ void create_string (instruction_t *instr)
 {
     /* Handle Mnemonic */
     char *mnemonic = A64_INSTRUCTIONS_STR[instr->type];
-    if (instr->cond) printf ("%s.%s\t", mnemonic, A64_CONDITIONS_STR[instr->cond]);
-    else if (instr->spec) printf ("%s.%s\t", mnemonic, A64_VEC_SPECIFIER_STR[instr->spec]);
+    if (instr->cond != -1) printf ("%s.%s\t", mnemonic, A64_CONDITIONS_STR[instr->cond]);
+    else if (instr->spec != -1) printf ("%s.%s\t", mnemonic, A64_VEC_SPECIFIER_STR[instr->spec]);
     else printf ("%s\t", mnemonic);
 
 
@@ -121,7 +121,14 @@ void create_string (instruction_t *instr)
 
 
             // Print the register
-            printf ("%s", reg);
+            if (op->reg_prefix && !op->reg_suffix)
+                printf ("%c%s", op->reg_prefix, reg);
+            else if (!op->reg_prefix && op->reg_suffix)
+                printf ("%s%c", reg, op->reg_suffix);
+            else if (op->reg_prefix && op->reg_suffix)
+                printf ("%c%s%c", op->reg_prefix, reg, op->reg_suffix);
+            else
+                printf ("%s", reg);
             goto check_comma;
         }
 
@@ -133,10 +140,14 @@ void create_string (instruction_t *instr)
                 printf ("s%d", op->imm_bits);
             else if (instr->type == ARM64_INSTRUCTION_SYS || instr->type == ARM64_INSTRUCTION_SYSL)
                 printf ("%d", op->imm_bits);
-            else if (op->imm_type == ARM64_IMMEDIATE_TYPE_LONG || op->imm_type == ARM64_IMMEDIATE_TYPE_ULONG)
-                printf ("#0x%llx", op->imm_bits);
-            else
-                printf ("#0x%x", op->imm_bits);
+            else {
+                if ((op->imm_type & ARM64_IMMEDIATE_FLAG_OUTPUT_DECIMAL) == ARM64_IMMEDIATE_FLAG_OUTPUT_DECIMAL)
+                    printf ("#%d", op->imm_bits);
+                else if (op->imm_type == ARM64_IMMEDIATE_TYPE_LONG || op->imm_type == ARM64_IMMEDIATE_TYPE_ULONG)
+                    printf ("0x%llx", op->imm_bits);
+                else
+                    printf ("0x%x", op->imm_bits);
+            }
             
             goto check_comma;
         }

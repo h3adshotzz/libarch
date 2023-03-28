@@ -53,6 +53,8 @@
 #define ARM64_IMMEDIATE_TYPE_SYSC               15
 #define ARM64_IMMEDIATE_TYPE_SYSS               16
 
+#define ARM64_IMMEDIATE_FLAG_OUTPUT_DECIMAL     0xa
+
 /* Operand type flags */
 #define ARM64_OPERAND_TYPE_REGISTER             17
 #define ARM64_OPERAND_TYPE_SHIFT                18
@@ -71,6 +73,8 @@ typedef struct operand_t
     arm64_reg_t         reg;
     uint8_t             reg_size;
     uint8_t             reg_type;
+    char                reg_prefix;
+    char                reg_suffix;
 
     /* op_type == ARM64_OPERAND_TYPE_SHIFT */
     uint32_t            shift;
@@ -106,8 +110,8 @@ typedef struct instruction_t
     /* Decode Group and Instruction type */
     uint8_t             group;
     arm64_instr_t       type;
-    uint32_t            cond;           // Branch condition
-    uint32_t            spec;           // Vector Arrangement Specifier
+    int                 cond;           // Branch condition
+    int                 spec;           // Vector Arrangement Specifier
 
     /* Operands */
     operand_t          *operands;
@@ -128,6 +132,8 @@ libarch_instruction_add_operand_shift (instruction_t **instr, uint32_t shift, ui
 
 extern libarch_return_t
 libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64reg, uint8_t size, uint8_t type);
+extern libarch_return_t
+libarch_instruction_add_operand_register_with_fix (instruction_t **instr, arm64_reg_t a64reg, uint8_t size, uint8_t type, char prefix, char suffix);
 
 
 extern libarch_return_t

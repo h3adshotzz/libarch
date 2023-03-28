@@ -27,6 +27,11 @@ libarch_instruction_create (uint32_t opcode, uint64_t addr)
     instruction_t *instr = calloc (1, sizeof (instruction_t));
     instr->opcode = opcode;
     instr->addr = addr;
+
+    /* default extra values */
+    instr->cond = -1;
+    instr->spec = -1;
+
     return instr;
 }
 
@@ -84,6 +89,30 @@ libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64
     (*instr)->operands[(*instr)->operands_len - 1].reg = a64reg;
     (*instr)->operands[(*instr)->operands_len - 1].reg_size = size;
     (*instr)->operands[(*instr)->operands_len - 1].reg_type = type;
+
+    return LIBARCH_RETURN_SUCCESS;
+}
+
+libarch_return_t
+libarch_instruction_add_operand_register_with_fix (instruction_t **instr, arm64_reg_t a64reg, uint8_t size, uint8_t type, char prefix, char suffix)
+{
+    /* Alloc/Realloc operands array */
+    if ((*instr)->operands_len == 0) {
+        (*instr)->operands = malloc (sizeof (operand_t) * ++(*instr)->operands_len);
+    } else {
+        operand_t *new = (*instr)->operands = realloc ((*instr)->operands, sizeof (operand_t) * ++(*instr)->operands_len);
+        (*instr)->operands = new;
+    }
+
+    /* Add the new operand */
+    (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_REGISTER;
+    (*instr)->operands[(*instr)->operands_len - 1].reg = a64reg;
+    (*instr)->operands[(*instr)->operands_len - 1].reg_size = size;
+    (*instr)->operands[(*instr)->operands_len - 1].reg_type = type;
+
+    /* Register prefix/suffix, e.g. [x12] has a prefix '[' and suffix ']' */
+    (*instr)->operands[(*instr)->operands_len - 1].reg_prefix = prefix;
+    (*instr)->operands[(*instr)->operands_len - 1].reg_suffix = suffix;
 
     return LIBARCH_RETURN_SUCCESS;
 }

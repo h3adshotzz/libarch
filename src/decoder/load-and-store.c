@@ -56,8 +56,7 @@ decode_compare_and_swap_pair (instruction_t **instr)
     libarch_instruction_add_operand_register (instr, Rt, size, ARM64_REGISTER_TYPE_GENERAL);
     libarch_instruction_add_operand_register (instr, Rt + 1, size, ARM64_REGISTER_TYPE_GENERAL);
 
-    if (size == 64)
-        libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+    libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
 
     return LIBARCH_RETURN_SUCCESS;
 }
@@ -148,15 +147,31 @@ decode_advanced_simd_load_store_multiple_structures (instruction_t **instr)
     (*instr)->spec = spec;
 
     /* Set the register operands */
-    for (int i = Rt; i < Rt + reg_count; i++)
-        libarch_instruction_add_operand_register (instr, i, 128, ARM64_REGISTER_TYPE_FLOATING_POINT);
+    if (reg_count == 1) {
+        libarch_instruction_add_operand_register_with_fix (instr, Rt, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, '{', '}');
+    } else {
+        for (int i = Rt; i < Rt + reg_count; i++) {
+            if (i == Rt) libarch_instruction_add_operand_register_with_fix (instr, i, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, '{', NULL);
+            else if (i == Rt + reg_count - 1) libarch_instruction_add_operand_register_with_fix (instr, i, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, NULL, '}');
+            else libarch_instruction_add_operand_register (instr, i, 128, ARM64_REGISTER_TYPE_FLOATING_POINT);
+        }
+    }
 
-    libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);  
+    libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');  
 
     /* Is the instruction post-indexed? */
     if (op2 == 1) {
         if (Rm != 0b11111) libarch_instruction_add_operand_register (instr, Rm, 64, ARM64_REGISTER_TYPE_GENERAL);
-        else libarch_instruction_add_operand_immediate (instr, (Q == 0) ? 32 : 64, ARM64_IMMEDIATE_TYPE_INT);
+        else {
+            int imm = 0;
+
+            if (reg_count == 1) imm = (Q == 0) ? 8 : 16;
+            else if (reg_count == 2) imm = (Q == 0) ? 16 : 32;
+            else if (reg_count == 3) imm = (Q == 0) ? 24 : 48;
+            else if (reg_count == 4) imm = (Q == 0) ? 32 : 64;
+
+            libarch_instruction_add_operand_immediate (instr, imm, ARM64_IMMEDIATE_TYPE_INT | ARM64_IMMEDIATE_FLAG_OUTPUT_DECIMAL);
+        }
     }
 
     return LIBARCH_RETURN_SUCCESS;
@@ -175,16 +190,6 @@ decode_advanced_simd_load_store_single_structure (instruction_t **instr)
     unsigned size = select_bits ((*instr)->opcode, 10, 11);
     unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
     unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
-
-    /**
-     * 
-     *  op2 = 2     L = 0   R = 0   opcode == 000                           -   ST1 8-bit
-     *  op2 = 2     L = 0   R = 0   opcode == 010           size == x0      -   ST1 16-bit
-     *  op2 = 2     L = 0   R = 0   opcode == 100           size == 00      -   ST1 32-bit 
-     *  op2 = 2     L = 0   R = 0   opcode == 100   S == 0  size == 01      -   ST1 64-bit
-     *  op2 = 3     
-     * 
-     */
 
     unsigned elem = (((opcode & 1) << 1) | R) + 1;
     int index = 0;
@@ -221,7 +226,9 @@ decode_advanced_simd_load_store_single_structure (instruction_t **instr)
 
     /* Set the register operands */
     for (int i = Rt; i < Rt + elem; i++) {
-        libarch_instruction_add_operand_register (instr, i, 128, ARM64_REGISTER_TYPE_FLOATING_POINT);
+        if (i == Rt) libarch_instruction_add_operand_register_with_fix (instr, i, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, '{', NULL);
+        else if (i == Rt + elem - 1) libarch_instruction_add_operand_register_with_fix (instr, i, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, NULL, '}');
+        else libarch_instruction_add_operand_register (instr, i, 128, ARM64_REGISTER_TYPE_FLOATING_POINT);
 
         if (replicate) {
             if (size == 0) spec = (Q == 0) ? ARM64_VEC_ARRANGEMENT_8B : ARM64_VEC_ARRANGEMENT_16B;
@@ -236,6 +243,9 @@ decode_advanced_simd_load_store_single_structure (instruction_t **instr)
     if (!replicate)
         libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &index, ARM64_IMMEDIATE_TYPE_UINT);
 
+    /* Add base register */
+    libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL);
+
     /* Is the instruction post-indexed? */
     if (op2 == 3) {
         if (Rm != 0b11111) libarch_instruction_add_operand_register (instr, Rm, 64, ARM64_REGISTER_TYPE_GENERAL);
@@ -244,6 +254,349 @@ decode_advanced_simd_load_store_single_structure (instruction_t **instr)
 
     return LIBARCH_RETURN_SUCCESS;
 }
+
+static libarch_return_t
+decode_load_store_memory_tags (instruction_t **instr)
+{
+    unsigned opc = select_bits ((*instr)->opcode, 22, 23);
+    unsigned imm9 = select_bits ((*instr)->opcode, 12, 20);
+    unsigned op2 = select_bits ((*instr)->opcode, 10, 11);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    /* Unallocated */
+    if (opc == 2 && imm9 != 0 && op2 == 0) return LIBARCH_RETURN_VOID;
+    if (opc == 3 && imm9 != 0 && op2 == 0) return LIBARCH_RETURN_VOID;
+
+    unsigned int simm = sign_extend (imm9, 9) << 4;
+
+    // STG
+    if (opc == 0 && (op2 >= 1 && op2 <= 3)) {
+        (*instr)->type = ARM64_INSTRUCTION_STG;
+
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+        if (simm)
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &simm, ARM64_IMMEDIATE_TYPE_UINT);
+
+    // STZGM
+    } else if (opc == 0 && imm9 == 0 && op2 == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_STZGM;
+        
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    // LDG
+    } else if (opc == 1 && op2 == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_LDG;
+
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &simm, ARM64_IMMEDIATE_TYPE_UINT);
+
+    // STZG
+    } else if (opc == 1 && (op2 >= 1 && op2 <= 3)) {
+        (*instr)->type = ARM64_INSTRUCTION_STZG;
+
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+        
+        if (simm)
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &simm, ARM64_IMMEDIATE_TYPE_UINT);
+
+    // ST2G
+    } else if (opc == 2 && (op2 >= 1 && op2 <= 3)) {
+        (*instr)->type = ARM64_INSTRUCTION_ST2G;
+
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+        
+        if (simm)
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &simm, ARM64_IMMEDIATE_TYPE_UINT);
+
+    // STGM
+    } else if (opc == 2 && imm9 == 0 && op2 == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_STGM;
+
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    // STZ2G
+    } else if (opc == 3 && (op2 >= 1 && op2 <= 3)) {
+        (*instr)->type = ARM64_INSTRUCTION_STZ2G;
+
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+        
+        if (simm)
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &simm, ARM64_IMMEDIATE_TYPE_UINT);
+
+    // LDGM
+    } else if (opc == 2 && imm9 == 0 && op2 == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_LDGM;
+
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+    }
+
+    return LIBARCH_RETURN_SUCCESS;
+}
+
+static libarch_return_t
+decode_load_store_exclusive_pair (instruction_t **instr)
+{
+    unsigned sz = select_bits ((*instr)->opcode, 30, 30);
+    unsigned L = select_bits ((*instr)->opcode, 22, 22);
+    unsigned Rs = select_bits ((*instr)->opcode, 16, 20);
+    unsigned o0 = select_bits ((*instr)->opcode, 15, 15);
+    unsigned Rt2 = select_bits ((*instr)->opcode, 10, 14);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    /* Determine instruction size, and register width */
+    uint32_t len;
+    unsigned size;
+    const char **regs;
+
+    if (sz == 1) _SET_64 (size, regs, len);
+    else _SET_32 (size, regs, len);
+
+    // STXP / STLXP
+    if (L == 0) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_STXP;
+        else (*instr)->type = ARM64_INSTRUCTION_STLXP;
+
+        // The first register is always 32-bit
+        libarch_instruction_add_operand_register (instr, Rs, 32, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register (instr, Rt, size, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register (instr, Rt2, size, ARM64_REGISTER_TYPE_GENERAL);
+
+    // LDXP / LDAXP
+    } else if (L == 1 && o0 == 0) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_LDXP;
+        else (*instr)->type = ARM64_INSTRUCTION_LDAXP;
+
+        libarch_instruction_add_operand_register (instr, Rt, size, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register (instr, Rt2, size, ARM64_REGISTER_TYPE_GENERAL);
+    }
+
+    // The base register is always 64-bit.
+    libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    return LIBARCH_RETURN_SUCCESS;
+}
+
+static libarch_return_t
+decode_load_store_exclusive_register (instruction_t **instr)
+{
+    unsigned size = select_bits ((*instr)->opcode, 30, 31);
+    unsigned L = select_bits ((*instr)->opcode, 22, 22);
+    unsigned Rs = select_bits ((*instr)->opcode, 16, 20);
+    unsigned o0 = select_bits ((*instr)->opcode, 15, 15);
+    unsigned Rt2 = select_bits ((*instr)->opcode, 10, 14);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    // STXRB / STLXRB
+    if (size == 0 && L == 0) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_STXRB;
+        else (*instr)->type = ARM64_INSTRUCTION_STLXRB;
+
+        // The first two registers are always 32-bit
+        libarch_instruction_add_operand_register (instr, Rs, 32, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register (instr, Rt, 32, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    // LDXRB / LDAXRB
+    } else if (size == 0 && L == 1) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_LDXRB;
+        else (*instr)->type = ARM64_INSTRUCTION_LDAXRB;
+
+        // The first register is always 32-bit
+        libarch_instruction_add_operand_register (instr, Rt, 32, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    // STXRH / STLXRH
+    } else if (size == 1 && L == 0) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_STXRH;
+        else (*instr)->type = ARM64_INSTRUCTION_STLXRH;
+
+        // The first two registers are always 32-bit
+        libarch_instruction_add_operand_register (instr, Rs, 32, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register (instr, Rt, 32, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    // LDXRH / LDAXRH
+    } else if (size == 1 && L == 1) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_LDXRH;
+        else (*instr)->type = ARM64_INSTRUCTION_LDAXRH;
+
+        // The first register is always 32-bit
+        libarch_instruction_add_operand_register (instr, Rt, 32, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    // STXR / STXLR
+    } else if ((size == 2 || size == 3) && L == 0) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_STXR;
+        else (*instr)->type = ARM64_INSTRUCTION_STLXR;
+
+        // The first register is always 32-bit
+        libarch_instruction_add_operand_register (instr, Rs, 32, ARM64_REGISTER_TYPE_GENERAL);
+
+        if (size == 2) libarch_instruction_add_operand_register (instr, Rt, 32, ARM64_REGISTER_TYPE_GENERAL);
+        else libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    // LDXR / LDAXR
+    } else if ((size == 2 || size == 3) && L == 1) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_LDXR;
+        else (*instr)->type = ARM64_INSTRUCTION_LDAXR;
+
+        // The first register is always 32-bit
+        libarch_instruction_add_operand_register (instr, Rs, 32, ARM64_REGISTER_TYPE_GENERAL);
+
+        if (size == 2) libarch_instruction_add_operand_register (instr, Rt, 32, ARM64_REGISTER_TYPE_GENERAL);
+        else libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    }
+
+    return LIBARCH_RETURN_SUCCESS;
+}
+
+static libarch_return_t
+decode_load_store_ordered (instruction_t **instr)
+{
+    unsigned size = select_bits ((*instr)->opcode, 30, 31);
+    unsigned L = select_bits ((*instr)->opcode, 22, 22);
+    unsigned Rs = select_bits ((*instr)->opcode, 16, 20);
+    unsigned o0 = select_bits ((*instr)->opcode, 15, 15);
+    unsigned Rt2 = select_bits ((*instr)->opcode, 10, 14);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    // STLLRB / STLRB
+    if (size == 0 && L == 0) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_STLLRB;
+        else (*instr)->type = ARM64_INSTRUCTION_STLRB;
+
+        // First register is 32-bit
+        libarch_instruction_add_operand_register (instr, Rt, 32, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+        
+    // LDLARB / LDARB
+    } else if (size == 0 && L == 1) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_LDLARB;
+        else (*instr)->type = ARM64_INSTRUCTION_LDARB;
+
+        // First register is 32-bit
+        libarch_instruction_add_operand_register (instr, Rt, 32, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    // STLLRH / STLRH
+    } else if (size == 1 && L == 0) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_STLLRH;
+        else (*instr)->type = ARM64_INSTRUCTION_STLRH;
+
+        // First register is 32-bit
+        libarch_instruction_add_operand_register (instr, Rt, 32, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    // LDLARH / LDARH
+    } else if (size == 1 && L == 1) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_LDLARH;
+        else (*instr)->type = ARM64_INSTRUCTION_LDARH;
+
+        // First register is 32-bit
+        libarch_instruction_add_operand_register (instr, Rt, 32, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    // STLLR / STLR
+    } else if ((size == 2 || size == 3) && L == 0) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_STLLR;
+        else (*instr)->type = ARM64_INSTRUCTION_STLR;
+
+        // First register is 32-bit
+        libarch_instruction_add_operand_register (instr, Rt, (size == 2) ? 32 : 64, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    // LDLAR / LDAR
+    } else if ((size == 2 || size == 3) && L == 1) {
+        if (o0 == 0) (*instr)->type = ARM64_INSTRUCTION_LDLAR;
+        else (*instr)->type = ARM64_INSTRUCTION_LDAR;
+
+        // First register is 32-bit
+        libarch_instruction_add_operand_register (instr, Rt, (size == 2) ? 32 : 64, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+    }
+    return LIBARCH_RETURN_SUCCESS;
+}
+
+static libarch_return_t
+decode_load_register_literal (instruction_t **instr)
+{
+    unsigned opc = select_bits ((*instr)->opcode, 30, 31);
+    unsigned V = select_bits ((*instr)->opcode, 26, 26);
+    unsigned imm19 = select_bits ((*instr)->opcode, 5, 23);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    /* Extend the pc-relative immediate value */
+    long label = (signed) sign_extend (imm19 << 2, 64) + (*instr)->addr;
+
+    // LDR (literal) - 32-bit
+    if (opc == 0 && V == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_LDR;
+
+        libarch_instruction_add_operand_register (instr, Rt, 32, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG);
+
+    // LDR (literal, SIMD & FP) - 32-bit
+    } else if (opc == 0 && V == 1) {
+        (*instr)->type = ARM64_INSTRUCTION_LDR;
+
+        libarch_instruction_add_operand_register (instr, Rt, 32, ARM64_REGISTER_TYPE_FLOATING_POINT);
+        libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG);
+
+    // LDR (literal) - 64-bit
+    } else if (opc == 1 && V == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_LDR;
+
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG);
+
+    // LDR (literal, SIMD & FP) - 64-bit
+    } else if (opc == 1 && V == 1) {
+        (*instr)->type = ARM64_INSTRUCTION_LDR;
+
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_FLOATING_POINT);
+        libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG);
+
+    // LDRSW (literal)
+    } else if (opc == 2 && V == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_LDRSW;
+
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL);
+        libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG);
+
+    // LDR (literal, SIMD & FP) - 128-bit
+    } else if (opc == 2 && V == 1) {
+        (*instr)->type = ARM64_INSTRUCTION_LDR;
+
+        libarch_instruction_add_operand_register (instr, Rt, 128, ARM64_REGISTER_TYPE_FLOATING_POINT);
+        libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG);
+
+    // PRFM (literal)
+    } else if (opc == 3 && V == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_PRFM;
+
+    }
+}
+
 
 
 libarch_return_t
@@ -255,35 +608,52 @@ disass_load_and_store_instruction (instruction_t *instr)
     unsigned op3 = select_bits (instr->opcode, 16, 21);
     unsigned op4 = select_bits (instr->opcode, 10, 11);
 
-    if (op0 == 0 || op0 == 4) {
-        if (op1 == 0 && op2 == 0 && (op3 >> 5) == 1)
-            decode_compare_and_swap_pair (&instr);
-        else if (op1 == 1 && (op2 == 0 || op2 == 1) && (op3 == 0 || (op3 >> 5) == 0)) {
-            if (op2 == 0) printf ("Advanced SIMD load/store multiple structures\n");
-            else printf ("Advanced SIMD load/store multiple structures (post-indexed)\n");
+    if (op0 == 0 && op1 == 0 && op2 == 0 && (op3 >> 5) == 1) {
+        printf ("Compare and swap pair\n");
+        decode_compare_and_swap_pair (&instr);
 
-            decode_advanced_simd_load_store_multiple_structures (&instr);
+    } else if (((op0 == 4 || op0 == 0) && op1 == 1 && op2 == 0 && op3 == 0) ||
+               ((op0 == 4 || op0 == 0) && op1 == 1 && op2 == 1 && (op3 >> 5) == 0)) {
+        printf ("Advanced SIMD load/store multiple structures\n");
+        decode_advanced_simd_load_store_multiple_structures (&instr);
 
-        } else if (op1 == 1 && (op2 == 2 || op2 == 3)) {
-            if (op2 == 2) printf ("Advanced SIMD load/store single structure\n");
-            else printf ("Advanced SIMD load/store siingle structure (post-indexed)\n");
+    } else if (((op0 == 4 || op0 == 0) && op1 == 1 && op2 == 2 && (op3 == 0 || (op3 >> 5) == 1)) ||
+               ((op0 == 4 || op0 == 0) && op1 == 1 == op2 == 3)) {
+        printf ("Advanced SIMD load/store single structure\n");
+        decode_advanced_simd_load_store_single_structure (&instr);
 
-            decode_advanced_simd_load_store_single_structure (&instr);
-        }
+    } else if (op0 == 13 && op1 == 0 && (op2 == 2 || op2 == 3) && (op3 >> 5) == 1) {
+        printf ("Load/store memory tags\n");
+        decode_load_store_memory_tags (&instr);
 
-    } else if (op0 == 13) {
-        if (op1 == 0 && (op2 >> 1) == 1 && (op3 >> 5) == 1)
-            printf ("Load/store memory tags\n");
-        else
-            printf ("unallocated load-store instruction\n");
+    } else if (((op0 >> 2) == 2 || (op0 >> 2) == 3) && op1 == 0 && op2 == 0 && (op3 >> 5) == 1) {
+        printf ("Load/store exclusive pair\n");
+        decode_load_store_exclusive_pair (&instr);
 
-    } else if (op0 == 8 || op0 == 12) {
-        if (op1 == 0 && op2 == 0 && (op3 >> 5) == 1)
-            printf ("Load/store exclusive pair\n");
-        else
-            printf ("unallocated load-store instruction\n");
+    } else if (((op0 >> 2) >= 0 || (op0 >> 2) <= 3) && op1 == 0 && op2 == 0 && (op3 >> 5) == 0) {
+        printf ("Load/store exclusive register\n");
+        decode_load_store_exclusive_register (&instr);
+
+    } else if (((op0 >> 2) >= 0 || (op0 >> 2) <= 3) && op1 == 0 && op2 == 1 && (op3 >> 5) == 0) {
+        printf ("Load/store ordered\n");
+        decode_load_store_ordered (&instr);
+
+    } else if (((op0 >> 2) >= 0 || (op0 >> 2) <= 3) && op1 == 0 && op2 == 1 && (op3 >> 5) == 1) {
+        printf ("Compare and swap\n");
+        // Not Implemented Yet
+
+    } else if (((op0 >> 2) >= 1 || (op0 >> 2) <= 3) && op1 == 0 && (op2 == 2 || op2 == 3) && (op3 >> 5) == 0 && op4 == 0) {
+        printf ("LDAPR/STLR (Unscaled immediate)\n");
+        // Not Implemented Yet
+
+    } else if (((op0 >> 2) >= 1 || (op0 >> 2) <= 3) && (op2 == 0 || op2 == 1)) {
+        printf ("Load Register (literal)\n");
+        decode_load_register_literal (&instr);
+
     } else {
-        printf ("*not implemented*\n");
+        printf ("not implemented\n");
     }
+
+
     return LIBARCH_RETURN_SUCCESS;
 }
