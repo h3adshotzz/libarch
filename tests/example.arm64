@@ -18,4 +18,8 @@ e70301aa    -   mov x7, x1
 c64000f1    -   subs x6, x6, 0x10
 c6400071    -   subs w6, w6, 0x10
 
+d011b2d2  	-   mov	x16, #2425225216
+0a00a012  	-   movn	w10, #0, lsl #16
+695595f2    -   movk x9, 0xaaab
+
 * Data Processing Register 
