@@ -25,12 +25,28 @@
 #define ARM64_DECODE_GROUP_BRANCH_EXCEPTION_SYSREG          5
 #define ARM64_DECODE_GROUP_LOAD_AND_STORE                   6
 
+/* Data Processing Subgroups */
+#define ARM64_DECODE_SUBGROUP_UNKNOWN                       0
+
+#define ARM64_DECODE_SUBGROUP_PC_RELATIVE_ADDRESSING        1
+#define ARM64_DECODE_SUBGROUP_ADD_SUBTRACT_IMMEDIATE        2
+#define ARM64_DECODE_SUBGROUP_ADD_SUBTRACT_IMMEDIATE_TAGS   3
+#define ARM64_DECODE_SUBGROUP_LOGICAL_IMMEDIATE             4
+#define ARM64_DECODE_SUBGROUP_MOVE_WIDE_IMMEDIATE           5
+#define ARM64_DECODE_SUBGROUP_BITFIELD                      6
+#define ARM64_DECODE_SUBGROUP_EXTRACT                       7
+
 /**
  *  NOTE:   This header contains definitions of arm64 instructions. The actual
  *          libarch instruction structures and functions are all in the header
  *          file instruction.h.
  */
 
+/**
+ *  \brief  AArch64 Instruction codes. These correspond to an array below that
+ *          contains the string representation of each instruction.
+ * 
+*/
 typedef enum arm64_instr_t
 {
     ARM64_INSTRUCTION_UNK = 0,
@@ -812,6 +828,10 @@ typedef enum arm64_instr_t
     ARM64_INSTRUCTION_TCOMMIT,
 } arm64_instr_t;
 
+/**
+ *  \brief  AArch64 Instruction Strings. 
+ * 
+*/
 static const char *A64_INSTRUCTIONS_STR[] = 
 {
     "unk",
@@ -1591,6 +1611,12 @@ static const char *A64_INSTRUCTIONS_STR[] =
     "tcommit",
 };
 
+/**
+ *  \brief  Length of the A64_INSTRUCTIONS_STR array containing all the supported
+ *          AArch64 instructions.
+ * 
+*/
 static uint64_t A64_INSTRUCTIONS_STR_LEN = sizeof (A64_INSTRUCTIONS_STR) / sizeof (*A64_INSTRUCTIONS_STR);
+
 
 #endif /* __libarch_arm64_instructions_h__ */

@@ -18,6 +18,10 @@
 
 #include <stdlib.h>
 
+/**
+ *  \brief  AArch64 TLBI Operation names, indexed by the `arm64_tlbi_op_t` values.
+ *  
+ */
 static const char *A64_TLBI_OPS_STR[] =
 {
     "vmalle1is", "vae1is", "aside1is", "vaae1is", "vale1is", "vaale1is",
@@ -46,8 +50,19 @@ static const char *A64_TLBI_OPS_STR[] =
     "rvale3isnxs", "alle3isnxs", "vae3isnxs", "vale3isnxs", "rvae3osnxs", "rvale3osnxs",
     "rvae3nxs", "rvale3nxs", "alle3nxs", "vae3nxs", "vale3nxs", "unknown",
 };
+
+/**
+ *  \brief  Length of the A64_TLBI_OPS_STR array containing all the supported TLBI
+ *          Operations.
+ * 
+*/
 static uint64_t A64_TLBI_OPS_STR_LEN = sizeof (A64_TLBI_OPS_STR) / sizeof (*A64_TLBI_OPS_STR);
 
+/**
+ *  \brief  AArch64 TLBI Operation values, with corresponding strings in the A64_TLBI_OPS_STR
+ *          array.
+ *  
+ */
 typedef enum arm64_tlbi_op_t
 {
     ARM64_TLBI_OP_VMALLE1IS = 0,

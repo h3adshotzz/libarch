@@ -30,6 +30,6 @@ target_sources(libarch
         utils.c
 
         decoder/data-processing.c
-        decoder/branch.c
-        decoder/load-and-store.c
+        #decoder/branch.c
+        #decoder/load-and-store.c
 )

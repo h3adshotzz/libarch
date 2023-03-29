@@ -30,10 +30,15 @@
 #include <libarch.h>
 #include <libarch-version.h>
 
-#include <arm64/arm64-instructions.h>
-#include <arm64/arm64-registers.h>
-#include <arm64/arm64-misc.h>
-#include <arm64/arm64-tlbi-ops.h>
+#include "arm64/arm64-common.h"
+#include "arm64/arm64-conditions.h"
+#include "arm64/arm64-instructions.h"
+#include "arm64/arm64-prefetch-ops.h"
+#include "arm64/arm64-pstate.h"
+#include "arm64/arm64-registers.h"
+#include "arm64/arm64-tlbi-ops.h"
+#include "arm64/arm64-translation.h"
+#include "arm64/arm64-vector-specifiers.h"
 
 #include <instruction.h>
 #include <register.h>
@@ -45,6 +50,7 @@ void instruction_debug (instruction_t *instr, int show_fields)
     printf ("Parsed:            %s\n",          instr->parsed);
     printf ("Opcode:            0x%08x\n",      instr->opcode);
     printf ("Decode Group:      %d\n",          instr->group);
+    printf ("Decode Subgroup:   %d\n",          instr->subgroup);
     printf ("Instruction Type:  %s (%d)\n",     A64_INSTRUCTIONS_STR[instr->type], instr->type);
     printf ("Address:           0x%016x\n",     instr->addr);
     base10 (instr->opcode, 29);
@@ -232,7 +238,7 @@ int main (int argc, char *argv[])
     if (argc == 2) {
         uint32_t input = SWAP_INT(strtol(argv[1], NULL, 16));
         uint32_t *opcode[] = { input, NULL };
-        disassemble (opcode, 1, 0xfffffff00813e72c, 1);
+        disassemble (opcode, 1, 0, 1);
     } else {
         printf ("disassembling %s\n", argv[1]);
 

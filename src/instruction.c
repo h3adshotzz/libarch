@@ -13,14 +13,39 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <string.h>
+#include <assert.h>
 
 #include "instruction.h"
+//#include "decoder/branch.h"
+//#include "decoder/load-and-store.h"
 #include "decoder/data-processing.h"
-#include "decoder/load-and-store.h"
-#include "decoder/branch.h"
 
+/**
+ *  \brief  Allocate / Reallocated memory in the operands array for a new element.
+ * 
+ *  \param      instr   Instruction to modify the operands array of.
+ * 
+ *  \return Result code.
+*/
+LIBARCH_PRIVATE LIBARCH_API
+libarch_return_t
+_libarch_instruction_realloc_operand (instruction_t **instr)
+{
+    /* Alloc / Realloc the operands array */
+    if ((*instr)->operands_len == 0) {
+        (*instr)->operands = malloc (sizeof (operand_t) * ++(*instr)->operands_len);
+    } else {
+        operand_t *new = (*instr)->operands = realloc ((*instr)->operands, sizeof (operand_t) * ++(*instr)->operands_len);
+        (*instr)->operands = new;
+    }
 
+    assert ((*instr)->operands_len);
+    return ((*instr)->operands_len) ? LIBARCH_RETURN_SUCCESS : LIBARCH_RETURN_FAILURE;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+LIBARCH_API
 instruction_t *
 libarch_instruction_create (uint32_t opcode, uint64_t addr)
 {
@@ -35,16 +60,12 @@ libarch_instruction_create (uint32_t opcode, uint64_t addr)
     return instr;
 }
 
+
+LIBARCH_API
 libarch_return_t
 libarch_instruction_add_operand_immediate (instruction_t **instr, uint64_t bits, uint8_t type)
 {
-    /* Alloc/Realloc operands array */
-    if ((*instr)->operands_len == 0) {
-        (*instr)->operands = malloc (sizeof (operand_t) * ++(*instr)->operands_len);
-    } else {
-        operand_t *new = (*instr)->operands = realloc ((*instr)->operands, sizeof (operand_t) * ++(*instr)->operands_len);
-        (*instr)->operands = new;
-    }
+    _libarch_instruction_realloc_operand (instr);
 
     /* Add the new operand */
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_IMMEDIATE;
@@ -54,16 +75,12 @@ libarch_instruction_add_operand_immediate (instruction_t **instr, uint64_t bits,
     return LIBARCH_RETURN_SUCCESS;
 }
 
+
+LIBARCH_API
 libarch_return_t
 libarch_instruction_add_operand_shift (instruction_t **instr, uint32_t shift, uint8_t type)
 {
-    /* Alloc/Realloc operands array */
-    if ((*instr)->operands_len == 0) {
-        (*instr)->operands = malloc (sizeof (operand_t) * ++(*instr)->operands_len);
-    } else {
-        operand_t *new = (*instr)->operands = realloc ((*instr)->operands, sizeof (operand_t) * ++(*instr)->operands_len);
-        (*instr)->operands = new;
-    }
+    _libarch_instruction_realloc_operand (instr);
 
     /* Add the new operand */
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_SHIFT;
@@ -73,18 +90,14 @@ libarch_instruction_add_operand_shift (instruction_t **instr, uint32_t shift, ui
     return LIBARCH_RETURN_SUCCESS;
 }
 
+
+LIBARCH_API
 libarch_return_t
 libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64reg, uint8_t size, uint8_t type, uint32_t opts)
 {
-    /* Alloc/Realloc operands array */
-    if ((*instr)->operands_len == 0) {
-        (*instr)->operands = malloc (sizeof (operand_t) * ++(*instr)->operands_len);
-    } else {
-        operand_t *new = (*instr)->operands = realloc ((*instr)->operands, sizeof (operand_t) * ++(*instr)->operands_len);
-        (*instr)->operands = new;
-    }
+    _libarch_instruction_realloc_operand (instr);
 
-    if (opts == ARM64_REGISTER_OPERAND_PREFER_ZERO && a64reg == ARM64_REG_SP && (size == 64 || size == 32))
+    if (opts == ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO && a64reg == ARM64_REG_SP && (size == 64 || size == 32))
         a64reg = (size == 64) ? ARM64_REG_XZR : ARM64_32_REG_WZR;
 
     /* Add the new operand */
@@ -96,16 +109,12 @@ libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64
     return LIBARCH_RETURN_SUCCESS;
 }
 
+
+LIBARCH_API
 libarch_return_t
 libarch_instruction_add_operand_register_with_fix (instruction_t **instr, arm64_reg_t a64reg, uint8_t size, uint8_t type, char prefix, char suffix)
 {
-    /* Alloc/Realloc operands array */
-    if ((*instr)->operands_len == 0) {
-        (*instr)->operands = malloc (sizeof (operand_t) * ++(*instr)->operands_len);
-    } else {
-        operand_t *new = (*instr)->operands = realloc ((*instr)->operands, sizeof (operand_t) * ++(*instr)->operands_len);
-        (*instr)->operands = new;
-    }
+    _libarch_instruction_realloc_operand (instr);
 
     /* Add the new operand */
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_REGISTER;
@@ -120,16 +129,12 @@ libarch_instruction_add_operand_register_with_fix (instruction_t **instr, arm64_
     return LIBARCH_RETURN_SUCCESS;
 }
 
+
+LIBARCH_API
 libarch_return_t
 libarch_instruction_add_operand_target (instruction_t **instr, char *target)
 {
-    /* Alloc/Realloc operands array */
-    if ((*instr)->operands_len == 0) {
-        (*instr)->operands = malloc (sizeof (operand_t) * ++(*instr)->operands_len);
-    } else {
-        operand_t *new = (*instr)->operands = realloc ((*instr)->operands, sizeof (operand_t) * ++(*instr)->operands_len);
-        (*instr)->operands = new;
-    }
+    _libarch_instruction_realloc_operand (instr);
 
     /* Add the new operand */
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_TARGET;
@@ -138,16 +143,12 @@ libarch_instruction_add_operand_target (instruction_t **instr, char *target)
     return LIBARCH_RETURN_SUCCESS;
 }
 
+
+LIBARCH_API
 libarch_return_t
 libarch_instruction_add_operand_extra (instruction_t **instr, int type, int val)
 {
-    /* Alloc/Realloc operands array */
-    if ((*instr)->operands_len == 0) {
-        (*instr)->operands = malloc (sizeof (operand_t) * ++(*instr)->operands_len);
-    } else {
-        operand_t *new = (*instr)->operands = realloc ((*instr)->operands, sizeof (operand_t) * ++(*instr)->operands_len);
-        (*instr)->operands = new;
-    }
+    _libarch_instruction_realloc_operand (instr);
 
     /* Add the new operand */
     (*instr)->operands[(*instr)->operands_len - 1].op_type = type;
@@ -156,6 +157,8 @@ libarch_instruction_add_operand_extra (instruction_t **instr, int type, int val)
     return LIBARCH_RETURN_SUCCESS;
 }
 
+
+LIBARCH_API
 libarch_return_t
 libarch_instruction_add_field (instruction_t **instr, int field)
 {
@@ -174,8 +177,8 @@ libarch_instruction_add_field (instruction_t **instr, int field)
 }
 
 
-/* move to libarch.c */
-libarch_return_t
+LIBARCH_API
+decode_status_t
 libarch_disass (instruction_t **instr)
 {
     /**
@@ -205,16 +208,19 @@ libarch_disass (instruction_t **instr)
         // SVE
     } else if ((op1 >> 1) == 4) {
         // Data Processing - Immediate
-        (*instr)->group = ARM64_DECODE_GROUP_DATA_PROCESS_IMMEDIATE;
-        disass_data_processing_instruction (*instr);
+        if (disass_data_processing_instruction (*instr) == LIBARCH_DECODE_STATUS_SUCCESS)
+            (*instr)->group = ARM64_DECODE_GROUP_DATA_PROCESS_IMMEDIATE;
+        
     } else if ((op1 >> 1) == 5) {
         // Branch, Exception, System Register
-        (*instr)->group = ARM64_DECODE_GROUP_BRANCH_EXCEPTION_SYSREG;
-        disass_branch_exception_sys_instruction (*instr);
+        //if (disass_branch_exception_sys_instruction (*instr) == LIBARCH_DECODE_STATUS_SUCCESS)
+            (*instr)->group = ARM64_DECODE_GROUP_BRANCH_EXCEPTION_SYSREG;
+        
     } else if ((op1 & ~10) == 4) {
         // Load and Store
-        (*instr)->group = ARM64_DECODE_GROUP_LOAD_AND_STORE;
-        disass_load_and_store_instruction (*instr);
+        //if (disass_load_and_store_instruction (*instr) == LIBARCH_DECODE_STATUS_SUCCESS)
+            (*instr)->group = ARM64_DECODE_GROUP_LOAD_AND_STORE;
+        
     } else if ((op1 & ~8) == 5) {
         // Data Processing - Register
         (*instr)->group = ARM64_DECODE_GROUP_DATA_PROCESS_REGISTER;
@@ -226,5 +232,5 @@ libarch_disass (instruction_t **instr)
         (*instr)->group = ARM64_DECODE_GROUP_UNKNOWN;
     }
 
-    return LIBARCH_RETURN_SUCCESS;
+    return ((*instr)->group != ARM64_DECODE_GROUP_UNKNOWN) ? LIBARCH_DECODE_STATUS_SUCCESS : LIBARCH_DECODE_STATUS_SOFT_FAIL;
 }

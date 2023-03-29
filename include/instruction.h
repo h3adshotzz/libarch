@@ -16,19 +16,20 @@
 #ifndef __LIBARCH_INSTRUCTION_H__
 #define __LIBARCH_INSTRUCTION_H__
 
-#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "libarch.h"
-#include "register.h"
-#include "utils.h"
-
 #include "arm64/arm64-instructions.h"
 #include "arm64/arm64-registers.h"
-#include "arm64/arm64-misc.h"
-#include "arm64/arm64-tlbi-ops.h"
+#include "arm64/arm64-common.h"
 
-
+/* General "None" flag */
 #define ARM64_NONE                              0
+
+/******************************************************************************
+*       Operands
+*******************************************************************************/
 
 /* Register type flags */
 #define ARM64_REGISTER_TYPE_GENERAL             1
@@ -53,7 +54,7 @@
 #define ARM64_IMMEDIATE_TYPE_SYSC               15
 #define ARM64_IMMEDIATE_TYPE_SYSS               16
 
-#define ARM64_IMMEDIATE_FLAG_OUTPUT_DECIMAL     0xa
+#define ARM64_IMMEDIATE_FLAG_OUTPUT_DECIMAL     0xf0000000
 
 /* Operand type flags */
 #define ARM64_OPERAND_TYPE_REGISTER             17
@@ -66,9 +67,35 @@
 #define ARM64_OPERAND_TYPE_PRFOP                24
 
 /* Register Options */
-#define ARM64_REGISTER_OPERAND_NONE             0
-#define ARM64_REGISTER_OPERAND_PREFER_ZERO      1
+#define ARM64_REGISTER_OPERAND_OPT_NONE         0
+#define ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO  1
 
+
+/**
+ *  \brief  Operand Structure.
+ * 
+ *          This structure represents all types of operands for an instruction
+ *          by having an `op_type` to determine which group of values to look
+ *          at.
+ * 
+ *          * Registers *
+ *          An arm64_reg_t value, which is just a typedef'd integer, holds the
+ *          actual register number, with the size determining whether it's an
+ *          X, W, V, etc. The type can be a General, Floating Point, System or
+ *          Zero register.
+ * 
+ *          Some registers need a prefix and/or suffix, e.g. stlrb	w8, [x9],
+ *          so these characters can be set. These are set to NULL by default
+ *          so when printing instructions, verify the prefix and suffix.
+ * 
+ *          * Shift and Immediate *
+ *          Shift's and Immediates are simple, they have a type and a value.
+ * 
+ *          * Extra *
+ *          Some operands are neither a Register, Shift or Immediate, so they
+ *          can be set in the `extra` field.
+ * 
+ */
 typedef struct operand_t
 {
     /* Operand type */
@@ -91,10 +118,6 @@ typedef struct operand_t
 
     /* op_type == ARM64_OPERAND_TYPE_TARGET */
     char               *target;
-
-    /** NOTE: These aren't used together, so could be replaced with an `extra` value,
-     *  they all store integers?
-    */
     
     /**
      *  op_type == ARM64_OPERAND_TYPE_PSTATE
@@ -105,6 +128,32 @@ typedef struct operand_t
 
 } operand_t;
 
+
+/******************************************************************************
+*       Instructions
+*******************************************************************************/
+
+
+/**
+ *  \brief  Instruction Structure
+ * 
+ *          This structure represents an AArch64 32-bit-wide Instruction. The
+ *          original 32-bit opcode is assigned to `opcode`, and the address of
+ *          the instruction is assigned to `addr` (optional). The `parsed` string
+ *          is unused and can be set by clients when disassembling a file or set
+ *          of instructions.
+ * 
+ *          The decode group and subgroup can be assigned so it's easier to
+ *          identify the type of instruction and how it's being decoded.
+ * 
+ *          The actual instruction, e.g. ARM64_INSTRUCTION_LDR, is assigned to
+ *          `type`, any conditions (for branches) is set assigned to `cond` and
+ *          if the instruction handles vectors, the arrangement specifier is
+ *          assigned to `spec`.
+ * 
+ *          Each operand is appended to the `operands` array, and each bit field
+ *          that is checked is added to `fields`.
+ */
 typedef struct instruction_t
 {
     /* Fully decoded, parsed instruction */
@@ -113,7 +162,8 @@ typedef struct instruction_t
     uint64_t            addr;
 
     /* Decode Group and Instruction type */
-    uint8_t             group;
+    uint32_t            group;
+    uint32_t            subgroup;
     arm64_instr_t       type;
     int                 cond;           // Branch condition
     int                 spec;           // Vector Arrangement Specifier
@@ -129,38 +179,114 @@ typedef struct instruction_t
         
 } instruction_t;
 
-extern libarch_return_t
-libarch_instruction_add_operand_immediate (instruction_t **instr, uint64_t bits, uint8_t type);
-
-extern libarch_return_t
-libarch_instruction_add_operand_shift (instruction_t **instr, uint32_t shift, uint8_t type);
-
-extern libarch_return_t
-libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64reg, uint8_t size, uint8_t type);
-extern libarch_return_t
-libarch_instruction_add_operand_register_with_fix (instruction_t **instr, arm64_reg_t a64reg, uint8_t size, uint8_t type, char prefix, char suffix);
-
-
-extern libarch_return_t
-libarch_instruction_add_field (instruction_t **instr, int field);
-extern libarch_return_t
-libarch_instruction_add_operand_target (instruction_t **instr, char *target);
-
-extern libarch_return_t
-libarch_instruction_add_operand_extra (instruction_t **instr, int type, int val);
-
-extern libarch_return_t
-libarch_instruction_add_operand_pstate (instruction_t **instr, arm64_pstate_t pstate);
-extern libarch_return_t
-libarch_instruction_add_operand_at_name (instruction_t **instr, arm64_addr_trans_t at);
-extern libarch_return_t
-libarch_instruction_add_operand_tlbi_op (instruction_t **instr, arm64_tlbi_op_t tlbi);
-
-extern instruction_t *
+/**
+ *  \brief  Create a new instruction_t structure for a given opcode, and set
+ *          it's address if required.
+ * 
+ *  \param      opcode      32-bit opcode for the instruction.
+ *  \param      addr        Address of the instruction, default to 0 (optional).
+ * 
+ *  \return An initialised instruction_t for the given opcode, not disassembled.
+ *  
+ */
+LIBARCH_EXPORT LIBARCH_API
+instruction_t *
 libarch_instruction_create (uint32_t opcode, uint64_t addr);
 
-extern libarch_return_t
+
+/**
+ *  \brief  Disassemble a given instruction, populating the rest of the instruction
+ *          structure.
+ * 
+ *  \param      instr       Instruction to disassemble.
+ * 
+ *  \return A libarch return code depending on the result of the disassembly
+ *          operation.
+ * 
+ */
+LIBARCH_EXPORT LIBARCH_API
+decode_status_t
 libarch_disass (instruction_t **instr);
+
+
+/******************************************************************************
+*       Instruction API
+*******************************************************************************/
+
+/**
+ * 
+ * 
+ */
+LIBARCH_EXPORT LIBARCH_API
+libarch_return_t
+libarch_instruction_add_operand_immediate (instruction_t **instr, 
+                                           uint64_t bits, 
+                                           uint8_t type);
+
+
+/**
+ * 
+ * 
+ */
+LIBARCH_EXPORT LIBARCH_API
+libarch_return_t
+libarch_instruction_add_operand_shift (instruction_t **instr, 
+                                       uint32_t shift, 
+                                       uint8_t type);
+
+
+/**
+ * 
+ * 
+ */
+LIBARCH_EXPORT LIBARCH_API
+libarch_return_t
+libarch_instruction_add_operand_register (instruction_t **instr, 
+                                          arm64_reg_t a64reg, 
+                                          uint8_t size, 
+                                          uint8_t type, 
+                                          uint32_t opts);
+
+
+/**
+ * 
+ * 
+ */
+LIBARCH_EXPORT LIBARCH_API
+libarch_return_t
+libarch_instruction_add_operand_register_with_fix (instruction_t **instr, 
+                                                   arm64_reg_t a64reg, 
+                                                   uint8_t size, 
+                                                   uint8_t type, 
+                                                   char prefix, 
+                                                   char suffix);
+
+
+/**
+ * 
+ * 
+ */
+LIBARCH_EXPORT LIBARCH_API
+libarch_return_t
+libarch_instruction_add_operand_target (instruction_t **instr, char *target);
+
+
+/**
+ * 
+ * 
+ */
+LIBARCH_EXPORT LIBARCH_API
+libarch_return_t
+libarch_instruction_add_operand_extra (instruction_t **instr, int type, int val);
+
+
+/**
+ * 
+ * 
+ */
+LIBARCH_EXPORT LIBARCH_API
+libarch_return_t
+libarch_instruction_add_field (instruction_t **instr, int field);
 
 
 #endif /* __libarch_disassembler_h__ */

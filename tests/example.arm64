@@ -1,1 +1,10 @@
-80 d0 18 d5 01 ac 40 f9 20 18 00 f9 22 00 80 79 42 d0 1b d5 01 70 40 f9 61 d0 1b d5 01 78 40 f9 22 b0 40 b9
+
+* Data Processing Immediate
+00090012    -   and	w0, w8, #7
+e9f301b2    -   mov	x9, 0xaaaaaaaa
+09011b32  	-   orr	w9, w8, #0x20
+52542052  	-   eor	w18, w2, #0x3fffff
+7f0017f2    - 	tst	x3, #0x20000000200
+26290072    -  	ands w6, w9, #0x7ff
+
+* Data Processing Register 
