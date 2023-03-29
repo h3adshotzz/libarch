@@ -411,7 +411,172 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_bitfield (instruction_t **instr)
 {
+    unsigned sf = select_bits ((*instr)->opcode, 31, 31);
+    unsigned opc = select_bits ((*instr)->opcode, 29, 30);
+    unsigned N = select_bits ((*instr)->opcode, 22, 22);
+    unsigned immr = select_bits ((*instr)->opcode, 16, 21);
+    unsigned imms = select_bits ((*instr)->opcode, 10, 15);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rd = select_bits ((*instr)->opcode, 0, 4);
 
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, sf);
+    libarch_instruction_add_field (instr, opc);
+    libarch_instruction_add_field (instr, N);
+    libarch_instruction_add_field (instr, immr);
+    libarch_instruction_add_field (instr, imms);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rd);
+
+    /* Determine instruction size, and register width */
+    uint32_t len;
+    unsigned size;
+    const char **regs;
+
+    if (sf == 1) _SET_64 (size, regs, len);
+    else _SET_32 (size, regs, len);
+
+    if (opc == 0) {
+
+        /* Add common operands */
+        libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+        libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
+        /* ADR */
+        if ((sf == 0 && imms == 0b011111) || (sf == 1 && imms == 0b111111)) {
+            (*instr)->type = ARM64_INSTRUCTION_ADR;
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &immr, ARM64_IMMEDIATE_TYPE_UINT);
+
+        /* SXTB / SXTH / SXTW */
+        } else if (immr == 0 && (imms == 0b000111 || imms == 0b001111 || imms == 0b011111)) {
+
+            /* Work out which one it is */
+            if (imms == 0b000111) (*instr)->type = ARM64_INSTRUCTION_SXTB;
+            else if (imms == 0b001111) (*instr)->type = ARM64_INSTRUCTION_SXTH;
+            else if (imms == 0b011111) (*instr)->type = ARM64_INSTRUCTION_SXTW;
+        
+        /* SBFX / SBFIZ */
+        } else if (imms < immr || BFXPreferred (sf, (opc >> 1), imms, immr)) {
+
+            unsigned lsb, width;
+
+            /* Choose the correct SBF_ instruction */
+            if (BFXPreferred (sf, (opc >> 1), imms, immr)) {
+                (*instr)->type = ARM64_INSTRUCTION_SBFX;
+                lsb = immr;
+                width = imms + 1 - lsb;
+            
+            } else {
+                (*instr)->type = ARM64_INSTRUCTION_SBFIZ;
+                lsb = (size - immr) & (size - 1);
+                width = imms + 1;
+            }
+
+            /* Add operands */
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT);
+
+        /* SBFM */
+        } else {
+            (*instr)->type = ARM64_INSTRUCTION_SBFM;
+
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &immr, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT);
+        }
+
+    } else if (opc == 1) {
+
+        /* Add common operand */
+        libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
+        /* BFC */
+        if (Rn == 0b11111 && (imms < immr)) {
+            (*instr)->type = ARM64_INSTRUCTION_BFC;
+
+            /* Calculate lsb and width */
+            unsigned lsb = (size - immr) & (size - 1);
+            unsigned width = imms + 1;
+
+            /* Add operands */
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT);
+
+        /* BFI / BFXIL */
+        } else if ((Rn != 0b11111 && (imms < immr)) || (imms >= immr)) {
+
+            /* Work out which one it is */
+            if ((Rn != 0b11111 && (imms < immr))) (*instr)->type = ARM64_INSTRUCTION_BFI;
+            else if (imms >= immr) (*instr)->type = ARM64_INSTRUCTION_BFXIL;
+            else return LIBARCH_DECODE_STATUS_FAIL;
+
+            /* Calculate lsb and width */
+            unsigned lsb = immr;
+            unsigned width = imms + 1 - lsb;
+
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT);
+
+        /* BFM */
+        } else {
+            (*instr)->type = ARM64_INSTRUCTION_BFM;
+
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &immr, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT);
+        }
+
+    } else if (opc == 2) {
+
+        /* Add common operands */
+        libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+        libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+
+        /* LSL / LSR (immediate) */
+        if (((imms != 0b11111) && imms + 1 == immr) || imms == 0b11111) {
+
+            unsigned imm;
+
+            if (imms == 0b11111) {
+                (*instr)->type = ARM64_INSTRUCTION_LSR;
+                imm = immr;
+            } else {
+                (*instr)->type = ARM64_INSTRUCTION_LSL;
+                imm = (size - 1) - imms;
+            }
+            libarch_instruction_add_operand_immediate (instr, imm, ARM64_IMMEDIATE_TYPE_UINT);
+
+        /* UBFX / UBFIZ */
+        } else if (imms < immr || BFXPreferred (sf, (opc >> 1), imms, immr)) {
+            if (BFXPreferred (sf, (opc >> 1), imms, immr)) (*instr)->type = ARM64_INSTRUCTION_UBFX;
+            else (*instr)->type = ARM64_INSTRUCTION_UBFIZ;
+
+            /* Calculate lsb and width */
+            unsigned lsb = (size - immr) & (size - 1);
+            unsigned width = imms + 1;
+
+            /* Add operands */
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT);
+           
+        /* UXTB / UXTH */
+        } else if (immr == 0 && (imms == 0b000111 || imms == 0b001111)) {
+            if (imms == 0b000111) (*instr)->type = ARM64_INSTRUCTION_UXTB;
+            else (*instr)->type = ARM64_INSTRUCTION_UXTH;
+
+        /* UBFM */
+        } else {
+            (*instr)->type = ARM64_INSTRUCTION_UBFM;
+
+            /* Add Operands */
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int*) &immr, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int*) &imms, ARM64_IMMEDIATE_TYPE_UINT);
+        }
+    } else {
+        return LIBARCH_DECODE_STATUS_SOFT_FAIL;
+    }
+
+    return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
 

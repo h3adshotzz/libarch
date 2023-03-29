@@ -84,6 +84,7 @@ enum
     ARM64_REG_X27,
     ARM64_REG_X28,
     ARM64_REG_X29,
+    ARM64_REG_X30,
     ARM64_REG_SP,
     ARM64_REG_XZR,
 };
@@ -124,7 +125,8 @@ enum
     ARM64_32_REG_W27,
     ARM64_32_REG_W28,
     ARM64_32_REG_W29,
-    ARM64_32_REG_WP,
+    ARM64_32_REG_W30,
+    ARM64_32_REG_SP,
     ARM64_32_REG_WZR,
 };
 

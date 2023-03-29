@@ -97,8 +97,9 @@ libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64
 {
     _libarch_instruction_realloc_operand (instr);
 
-    if (opts == ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO && a64reg == ARM64_REG_SP && (size == 64 || size == 32))
-        a64reg = (size == 64) ? ARM64_REG_XZR : ARM64_32_REG_WZR;
+    if (a64reg == 31 && (size == 64 || size == 32))
+        if (opts == ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO) a64reg = (size == 64) ? ARM64_REG_XZR : ARM64_32_REG_WZR;
+        else a64reg = (size == 64) ? ARM64_REG_SP : ARM64_32_REG_SP;
 
     /* Add the new operand */
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_REGISTER;

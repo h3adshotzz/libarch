@@ -10,16 +10,34 @@ e9f301b2    -   mov	    x9, 0xaaaaaaaa
 94010130    -  	adr	    x20, #8241
 425822f0  	-   adrp	x2, 0xfffffff04bc59000
 
-e70301aa    -   mov x7, x1
-5f010091    -   mov sp, x10
-08bd0091    -   add x8, x8, 0x2f
-3f0540f1    -   cmp x9, 1, lsl 12
-290540d1    -   sub x9, x9, 1, lsl 12
-c64000f1    -   subs x6, x6, 0x10
-c6400071    -   subs w6, w6, 0x10
+e70301aa    -   mov     x7, x1
+5f010091    -   mov     sp, x10
+08bd0091    -   add     x8, x8, 0x2f
+3f0540f1    -   cmp     x9, 1, lsl 12
+290540d1    -   sub     x9, x9, 1, lsl 12
+c64000f1    -   subs    x6, x6, 0x10
+c6400071    -   subs    w6, w6, 0x10
 
-d011b2d2  	-   mov	x16, #2425225216
+d011b2d2  	-   mov	    x16, #2425225216
 0a00a012  	-   movn	w10, #0, lsl #16
-695595f2    -   movk x9, 0xaaab
+695595f2    -   movk    x9, 0xaaab
+
+ef1d0713  	-   sbfx	w15, w15, #7, #1
+087d4e93  	-   sbfx	x8, x8, #14, #18
+287c7d93  	-   sbfiz	x8, x1, #3, #32
+
+4a1d4093  	-   sxtb	x10, w10
+493d0013  	-   sxth	w9, w10
+
+15050c33  	-   bfi	    w21, w8, #20, #2
+a9b046b3  	-   bfxil	x9, x5, #6, #39
+
+e8f27dd3  	-   lsl	    x8, x23, #3
+297d1053  	-   lsr	    w9, w9, #16
+702e0053  	-   ubfx	w16, w19, #0, #12
+000f0a53  	-   ubfiz	w0, w24, #22, #4
+e11f0053  	-   uxtb	w1, wzr
+
+
 
 * Data Processing Register 
