@@ -584,7 +584,51 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_extract (instruction_t **instr)
 {
+    unsigned sf = select_bits ((*instr)->opcode, 31, 31);
+    unsigned op21 = select_bits ((*instr)->opcode, 29, 30);
+    unsigned N = select_bits ((*instr)->opcode, 22, 22);
+    unsigned o0 = select_bits ((*instr)->opcode, 21, 21);
 
+    unsigned Rm = select_bits ((*instr)->opcode, 16, 20);
+    unsigned imms = select_bits ((*instr)->opcode, 10, 15);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rd = select_bits ((*instr)->opcode, 0, 4);
+
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, sf);
+    libarch_instruction_add_field (instr, op21);
+    libarch_instruction_add_field (instr, N);
+    libarch_instruction_add_field (instr, o0);
+    libarch_instruction_add_field (instr, Rm);
+    libarch_instruction_add_field (instr, imms);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rd);
+
+    /* Determine instruction size, and register width */
+    uint32_t len;
+    unsigned size;
+    const char **regs;
+
+    if (sf == 1 && N == 1) _SET_64 (size, regs, len);
+    else _SET_32 (size, regs, len);
+
+    /* Common operands */
+    libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+    libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+
+    /* ROR (immediate ) */
+    if (Rn == Rm) {
+        (*instr)->type = ARM64_INSTRUCTION_ROR;
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT);
+
+    /* EXTR */
+    } else {
+        (*instr)->type == ARM64_INSTRUCTION_EXTR;
+        libarch_instruction_add_operand_register (instr, Rm, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT);
+    }
+
+    return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
 
