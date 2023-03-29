@@ -1,10 +1,21 @@
 
 * Data Processing Immediate
-00090012    -   and	w0, w8, #7
-e9f301b2    -   mov	x9, 0xaaaaaaaa
-09011b32  	-   orr	w9, w8, #0x20
-52542052  	-   eor	w18, w2, #0x3fffff
-7f0017f2    - 	tst	x3, #0x20000000200
-26290072    -  	ands w6, w9, #0x7ff
+00090012    -   and	    w0, w8, #7
+e9f301b2    -   mov	    x9, 0xaaaaaaaa
+09011b32  	-   orr	    w9, w8, #0x20
+52542052  	-   eor	    w18, w2, #0x3fffff
+7f0017f2    - 	tst	    x3, #0x20000000200
+26290072    -  	ands    w6, w9, #0x7ff
+
+94010130    -  	adr	    x20, #8241
+425822f0  	-   adrp	x2, 0xfffffff04bc59000
+
+e70301aa    -   mov x7, x1
+5f010091    -   mov sp, x10
+08bd0091    -   add x8, x8, 0x2f
+3f0540f1    -   cmp x9, 1, lsl 12
+290540d1    -   sub x9, x9, 1, lsl 12
+c64000f1    -   subs x6, x6, 0x10
+c6400071    -   subs w6, w6, 0x10
 
 * Data Processing Register 

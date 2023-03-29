@@ -21,7 +21,44 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_pc_relative_addressing (instruction_t **instr)
 {
+    unsigned op = select_bits ((*instr)->opcode, 31, 31);
+    unsigned immlo = select_bits ((*instr)->opcode, 29, 30);
+    unsigned immhi = select_bits ((*instr)->opcode, 5, 23);
+    unsigned Rd = select_bits ((*instr)->opcode, 0, 4);
 
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, op);
+    libarch_instruction_add_field (instr, immlo);
+    libarch_instruction_add_field (instr, immhi);
+    libarch_instruction_add_field (instr, Rd);
+
+    /* Calculate immediate value */
+    uint64_t imm = 0;
+    uint64_t imm_type = ARM64_IMMEDIATE_TYPE_ULONG;
+
+    /* Determine the instruction type and add the register operands */
+    if (op == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_ADR;
+
+        imm = ((immhi << 2) | immlo);
+        imm = sign_extend (imm, 21);
+        imm += (*instr)->addr;
+
+        imm_type |= ARM64_IMMEDIATE_FLAG_OUTPUT_DECIMAL;
+
+    } else {
+        (*instr)->type = ARM64_INSTRUCTION_ADRP;
+
+        imm = ((immhi << 2) | immlo) << 12;
+        imm = sign_extend (imm, 32);
+        imm += (*instr)->addr;
+    }
+
+    /* Add operands */
+    libarch_instruction_add_operand_register (instr, Rd, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+    libarch_instruction_add_operand_immediate (instr, imm, imm_type);
+
+    return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
 
@@ -29,7 +66,120 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_add_subtract_immediate (instruction_t **instr)
 {
+    unsigned sf = select_bits ((*instr)->opcode, 31, 31);
+    unsigned op = select_bits ((*instr)->opcode, 30, 30);
+    unsigned S = select_bits ((*instr)->opcode, 29, 29);
+    unsigned sh = select_bits ((*instr)->opcode, 22, 22);
+    unsigned imm12 = select_bits ((*instr)->opcode, 10, 21);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rd = select_bits ((*instr)->opcode, 0, 4);
 
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, sf);
+    libarch_instruction_add_field (instr, op);
+    libarch_instruction_add_field (instr, S);
+    libarch_instruction_add_field (instr, sh);
+    libarch_instruction_add_field (instr, imm12);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rd);
+
+    /* Determine instruction size, and register width */
+    uint32_t len;
+    unsigned size;
+    const char **regs;
+
+    if (sf == 1) _SET_64 (size, regs, len);
+    else _SET_32 (size, regs, len);
+
+    /* Determine the instruction type and add the register operands */
+    if (op == 0 && S == 0) {
+
+        /* Common operands */
+        libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+        libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
+        /* MOV */
+        if (sh == 0 && imm12 == 0 && (Rd == 0b11111 || Rn == 0b11111)) {
+            (*instr)->type = ARM64_INSTRUCTION_MOV;
+
+        /* ADD (immediate) */
+        } else {
+            (*instr)->type = ARM64_INSTRUCTION_ADD;
+            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
+
+            /* Add the left-shift if present */
+            if (sh) libarch_instruction_add_operand_shift (instr, 12, ARM64_SHIFT_TYPE_LSL);
+        }
+
+    } else if (op == 0 && S == 1) {
+
+        /**
+         * While there are common operands with CMD and ADDS (immediate), 
+         * they're not in the same order. 
+         */
+        /* CMN */
+        if (Rd == 0b11111) {
+            (*instr)->type = ARM64_INSTRUCTION_CMN;
+
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
+
+            /* Add the left-shift if present */
+            if (sh) libarch_instruction_add_operand_shift (instr, 12, ARM64_SHIFT_TYPE_LSL);
+
+        /* ADDS (immediate) */
+        } else {
+            (*instr)->type = ARM64_INSTRUCTION_ADDS;
+
+            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
+
+            /* Add the left-shift if present */
+            if (sh) libarch_instruction_add_operand_shift (instr, 12, ARM64_SHIFT_TYPE_LSL);
+        }
+
+    } else if (op == 1 && S == 0) {
+
+        /* SUB */
+        (*instr)->type = ARM64_INSTRUCTION_SUB;
+
+        libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+        libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+        libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
+
+        /* Add the left-shift if present */
+        if (sh) libarch_instruction_add_operand_shift (instr, 12, ARM64_SHIFT_TYPE_LSL);
+
+    } else if (op == 1 && S == 1) {
+
+        /* CMP */
+        if (Rd == 0b11111) {
+            (*instr)->type = ARM64_INSTRUCTION_CMP;
+
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
+
+            /* Add the left-shift if present */
+            if (sh) libarch_instruction_add_operand_shift (instr, 12, ARM64_SHIFT_TYPE_LSL);
+
+        /* SUBS (immediate) */
+        } else {
+            (*instr)->type = ARM64_INSTRUCTION_SUBS;
+
+            libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
+
+            /* Add the left-shift if present */
+            if (sh) libarch_instruction_add_operand_shift (instr, 12, ARM64_SHIFT_TYPE_LSL);
+        }
+
+    } else {
+        return LIBARCH_DECODE_STATUS_SOFT_FAIL;
+    }
+
+    return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
 
@@ -47,11 +197,9 @@ decode_logical_immediate (instruction_t **instr)
 {
     unsigned sf = select_bits ((*instr)->opcode, 31, 31);
     unsigned opc = select_bits ((*instr)->opcode, 29, 30);
-
     unsigned N = select_bits ((*instr)->opcode, 22, 22);
     unsigned immr = select_bits ((*instr)->opcode, 16, 21);
     unsigned imms = select_bits ((*instr)->opcode, 10, 15);
-
     unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
     unsigned Rd = select_bits ((*instr)->opcode, 0, 4);
 
@@ -88,17 +236,22 @@ decode_logical_immediate (instruction_t **instr)
     if (opc == 0) {
         (*instr)->type = ARM64_INSTRUCTION_AND;
         libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
     } else if (opc == 1) {
+
         if (Rn == 0b11111 && !move_wide_preferred (sf, N, imms, immr)) {
             (*instr)->type = ARM64_INSTRUCTION_MOV;
         } else {
             (*instr)->type = ARM64_INSTRUCTION_ORR;
             libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
         }
+
     } else if (opc == 2) {
         (*instr)->type = ARM64_INSTRUCTION_EOR;
         libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
     } else if (opc == 3) {
+
         if (Rd == 0b11111) {
             (*instr)->type = ARM64_INSTRUCTION_TST;
             libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
@@ -106,6 +259,9 @@ decode_logical_immediate (instruction_t **instr)
             (*instr)->type = ARM64_INSTRUCTION_ANDS;
             libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
         }
+
+    } else {
+        return LIBARCH_DECODE_STATUS_SOFT_FAIL;
     }
 
     /* Add the immediate operand */
