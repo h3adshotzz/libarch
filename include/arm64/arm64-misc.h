@@ -28,6 +28,38 @@ enum {
     ARM64_SYSOP_SYS,
 };
 
+/* Prefetch Operations */
+enum {
+    ARM64_PRFOP_PLDL1KEEP = 0,
+    ARM64_PRFOP_PLDL2KEEP,
+    ARM64_PRFOP_PLDL3KEEP,
+    ARM64_PRFOP_PLDL1STRM,
+    ARM64_PRFOP_PLDL2STRM,
+    ARM64_PRFOP_PLDL3STRM,
+
+    ARM64_PRFOP_PLIL1KEEP,
+    ARM64_PRFOP_PLIL2KEEP,
+    ARM64_PRFOP_PLIL3KEEP,
+    ARM64_PRFOP_PLIL1STRM,
+    ARM64_PRFOP_PLIL2STRM,
+    ARM64_PRFOP_PLIL3STRM,
+    
+    ARM64_PRFOP_PSTL1KEEP,
+    ARM64_PRFOP_PSTL2KEEP,
+    ARM64_PRFOP_PSTL3KEEP,
+    ARM64_PRFOP_PSTL1STRM,
+    ARM64_PRFOP_PSTL2STRM,
+    ARM64_PRFOP_PSTL3STRM,
+};
+
+static const char *A64_PRFOP_STR[] =
+{
+    "pldlel1keep", "pldlel2keep", "pldlel3keep", "pldlel1strm", "pldlel2strm", "pldlel3strm",
+    "plilel1keep", "plilel2keep", "plilel3keep", "plilel1strm", "plilel2strm", "plilel3strm",
+    "pstlel1keep", "pstlel2keep", "pstlel3keep", "pstlel1strm", "pstlel2strm", "pstlel3strm", 
+};
+static uint64_t A64_PRFOP_STR_LEN = sizeof (A64_PRFOP_STR) / sizeof (*A64_PRFOP_STR);
+
 /* vector arrangement specifiers */
 typedef enum arm64_vec_specifier_t
 {

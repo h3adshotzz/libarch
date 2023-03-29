@@ -189,6 +189,11 @@ void create_string (instruction_t *instr)
             printf ("%s", A64_TLBI_OPS_STR[op->extra]);
         }
 
+        /* Prefetch Operation */
+        if (op->op_type == ARM64_OPERAND_TYPE_PRFOP) {
+            printf ("%s", A64_PRFOP_STR[op->extra]);
+        }
+
 check_comma:
         if (i < instr->operands_len - 1) printf (", ");
     }

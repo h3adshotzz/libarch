@@ -74,7 +74,7 @@ libarch_instruction_add_operand_shift (instruction_t **instr, uint32_t shift, ui
 }
 
 libarch_return_t
-libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64reg, uint8_t size, uint8_t type)
+libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64reg, uint8_t size, uint8_t type, uint32_t opts)
 {
     /* Alloc/Realloc operands array */
     if ((*instr)->operands_len == 0) {
@@ -83,6 +83,9 @@ libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64
         operand_t *new = (*instr)->operands = realloc ((*instr)->operands, sizeof (operand_t) * ++(*instr)->operands_len);
         (*instr)->operands = new;
     }
+
+    if (opts == ARM64_REGISTER_OPERAND_PREFER_ZERO && a64reg == ARM64_REG_SP && (size == 64 || size == 32))
+        a64reg = (size == 64) ? ARM64_REG_XZR : ARM64_32_REG_WZR;
 
     /* Add the new operand */
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_REGISTER;

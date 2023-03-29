@@ -63,6 +63,11 @@
 #define ARM64_OPERAND_TYPE_PSTATE               21
 #define ARM64_OPERAND_TYPE_AT_NAME              22
 #define ARM64_OPERAND_TYPE_TLBI_OP              23
+#define ARM64_OPERAND_TYPE_PRFOP                24
+
+/* Register Options */
+#define ARM64_REGISTER_OPERAND_NONE             0
+#define ARM64_REGISTER_OPERAND_PREFER_ZERO      1
 
 typedef struct operand_t
 {

@@ -594,6 +594,38 @@ decode_load_register_literal (instruction_t **instr)
     } else if (opc == 3 && V == 0) {
         (*instr)->type = ARM64_INSTRUCTION_PRFM;
 
+        // Determine the Prefetch Operation
+        unsigned type = select_bits (Rt, 3, 4);
+        unsigned target = select_bits (Rt, 2, 1);
+        unsigned policy = select_bits (Rt, 0, 0);
+
+        int prfop = -1;
+
+        if (type == 0 && target == 0 && policy == 0) prfop = ARM64_PRFOP_PLDL1KEEP;
+        else if (type == 0 && target == 1 && policy == 0) prfop = ARM64_PRFOP_PLDL2KEEP;
+        else if (type == 0 && target == 2 && policy == 0) prfop = ARM64_PRFOP_PLDL3KEEP;
+        else if (type == 0 && target == 0 && policy == 1) prfop = ARM64_PRFOP_PLDL1STRM;
+        else if (type == 0 && target == 1 && policy == 1) prfop = ARM64_PRFOP_PLDL2STRM;
+        else if (type == 0 && target == 2 && policy == 1) prfop = ARM64_PRFOP_PLDL3STRM;
+        else if (type == 1 && target == 0 && policy == 0) prfop = ARM64_PRFOP_PLIL1KEEP;
+        else if (type == 1 && target == 1 && policy == 0) prfop = ARM64_PRFOP_PLIL2KEEP;
+        else if (type == 1 && target == 2 && policy == 0) prfop = ARM64_PRFOP_PLIL3KEEP;
+        else if (type == 1 && target == 0 && policy == 1) prfop = ARM64_PRFOP_PLIL1STRM;
+        else if (type == 1 && target == 1 && policy == 1) prfop = ARM64_PRFOP_PLIL2STRM;
+        else if (type == 1 && target == 2 && policy == 1) prfop = ARM64_PRFOP_PLIL3STRM;
+        else if (type == 2 && target == 0 && policy == 0) prfop = ARM64_PRFOP_PSTL1KEEP;
+        else if (type == 2 && target == 1 && policy == 0) prfop = ARM64_PRFOP_PSTL2KEEP;
+        else if (type == 2 && target == 2 && policy == 0) prfop = ARM64_PRFOP_PSTL3KEEP;
+        else if (type == 2 && target == 0 && policy == 1) prfop = ARM64_PRFOP_PSTL1STRM;
+        else if (type == 2 && target == 1 && policy == 1) prfop = ARM64_PRFOP_PSTL2STRM;
+        else if (type == 2 && target == 2 && policy == 1) prfop = ARM64_PRFOP_PSTL3STRM;
+
+        if (prfop) 
+            libarch_instruction_add_operand_extra (instr, ARM64_OPERAND_TYPE_PRFOP, prfop);
+        else 
+            libarch_instruction_add_operand_immediate (instr, *(long *) &Rt, ARM64_IMMEDIATE_TYPE_UINT);
+        libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG);
+
     }
 }
 
@@ -626,17 +658,21 @@ disass_load_and_store_instruction (instruction_t *instr)
         printf ("Load/store memory tags\n");
         decode_load_store_memory_tags (&instr);
 
-    } else if (((op0 >> 2) == 2 || (op0 >> 2) == 3) && op1 == 0 && op2 == 0 && (op3 >> 5) == 1) {
-        printf ("Load/store exclusive pair\n");
-        decode_load_store_exclusive_pair (&instr);
-
-    } else if (((op0 >> 2) >= 0 || (op0 >> 2) <= 3) && op1 == 0 && op2 == 0 && (op3 >> 5) == 0) {
-        printf ("Load/store exclusive register\n");
-        decode_load_store_exclusive_register (&instr);
-
     } else if (((op0 >> 2) >= 0 || (op0 >> 2) <= 3) && op1 == 0 && op2 == 1 && (op3 >> 5) == 0) {
         printf ("Load/store ordered\n");
         decode_load_store_ordered (&instr);
+
+    } else if ((op0 & ~12) == 0 && op1 == 0 && (op2 >> 1) == 0) {
+        if ((op3 >> 5) == 1) {
+            printf ("Load/store exclusive pair\n");
+            decode_load_store_exclusive_pair (&instr);
+        } else {
+            printf ("Load/store exclusive register\n");
+            decode_load_store_exclusive_register (&instr);
+        }
+    } else if (((op0 >> 2) >= 1 && (op0 >> 2) <= 3) && (op2 == 0 || op2 == 1)) {
+        printf ("Load Register (literal)\n");
+        decode_load_register_literal (&instr);
 
     } else if (((op0 >> 2) >= 0 || (op0 >> 2) <= 3) && op1 == 0 && op2 == 1 && (op3 >> 5) == 1) {
         printf ("Compare and swap\n");
@@ -645,10 +681,6 @@ disass_load_and_store_instruction (instruction_t *instr)
     } else if (((op0 >> 2) >= 1 || (op0 >> 2) <= 3) && op1 == 0 && (op2 == 2 || op2 == 3) && (op3 >> 5) == 0 && op4 == 0) {
         printf ("LDAPR/STLR (Unscaled immediate)\n");
         // Not Implemented Yet
-
-    } else if (((op0 >> 2) >= 1 || (op0 >> 2) <= 3) && (op2 == 0 || op2 == 1)) {
-        printf ("Load Register (literal)\n");
-        decode_load_register_literal (&instr);
 
     } else {
         printf ("not implemented\n");
