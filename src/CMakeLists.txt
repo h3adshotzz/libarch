@@ -31,5 +31,5 @@ target_sources(libarch
 
         decoder/data-processing.c
         decoder/branch.c
-        #decoder/load-and-store.c
+        decoder/load-and-store.c
 )

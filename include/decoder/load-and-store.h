@@ -19,12 +19,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "arm64/arm64-instructions.h"
-#include "arm64/arm64-registers.h"
 #include "instruction.h"
-#include "utils.h"
+#include "register.h"
 
-libarch_return_t
+#include "arm64/arm64-vector-specifiers.h"
+#include "arm64/arm64-instructions.h"
+#include "arm64/arm64-translation.h"
+#include "arm64/arm64-conditions.h"
+#include "arm64/arm64-registers.h"
+#include "arm64/arm64-pstate.h"
+#include "arm64/arm64-common.h"
+
+
+/**
+ * 
+ * 
+ */
+LIBARCH_EXPORT LIBARCH_API
+decode_status_t
 disass_load_and_store_instruction (instruction_t *instr);
 
 

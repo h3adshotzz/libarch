@@ -49,6 +49,15 @@
 #define ARM64_DECODE_SUBGROUP_COMPARE_AND_BRANCH_IMMEDIATE      11
 #define ARM64_DECODE_SUBGROUP_TEST_AND_BRANCH_IMMEDIATE         12
 
+#define ARM64_DECODE_SUBGROUP_COMPARE_AND_SWAP_PAIR                     1
+#define ARM64_DECODE_SUBGROUP_ADVANCED_SIMD_LOAD_STORE_MULT_STRUCT      2
+#define ARM64_DECODE_SUBGROUP_ADVANCED_SIMD_LOAD_STORE_SINGLE_STRUCT    3
+#define ARM64_DECODE_SUBGROUP_LOAD_STORE_MEMORY_TAGS                    4
+#define ARM64_DECODE_SUBGROUP_LOAD_STORE_ORDERED                        5
+#define ARM64_DECODE_SUBGROUP_LOAD_STORE_EXCL_PAIR                      6
+#define ARM64_DECODE_SUBGROUP_LOAD_STORE_EXCL_REGISTER                  7
+#define ARM64_DECODE_SUBGROUP_LOAD_REGISTER_LITERAL                     8
+
 /**
  *  NOTE:   This header contains definitions of arm64 instructions. The actual
  *          libarch instruction structures and functions are all in the header

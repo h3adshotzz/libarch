@@ -17,7 +17,7 @@
 
 #include "instruction.h"
 #include "decoder/branch.h"
-//#include "decoder/load-and-store.h"
+#include "decoder/load-and-store.h"
 #include "decoder/data-processing.h"
 
 /**
@@ -101,6 +101,9 @@ libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64
         if (opts == ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO) a64reg = (size == 64) ? ARM64_REG_XZR : ARM64_32_REG_WZR;
         else a64reg = (size == 64) ? ARM64_REG_SP : ARM64_32_REG_SP;
 
+    /* Prevent overflows */
+    if (a64reg > 31) a64reg = (a64reg - 32);
+
     /* Add the new operand */
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_REGISTER;
     (*instr)->operands[(*instr)->operands_len - 1].reg = a64reg;
@@ -116,6 +119,9 @@ libarch_return_t
 libarch_instruction_add_operand_register_with_fix (instruction_t **instr, arm64_reg_t a64reg, uint8_t size, uint8_t type, char prefix, char suffix)
 {
     _libarch_instruction_realloc_operand (instr);
+
+    /* Prevent overflows */
+    if (a64reg > 31) a64reg = (a64reg - 32);
 
     /* Add the new operand */
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_REGISTER;
@@ -219,7 +225,7 @@ libarch_disass (instruction_t **instr)
         
     } else if ((op1 & ~10) == 4) {
         // Load and Store
-        //if (disass_load_and_store_instruction (*instr) == LIBARCH_DECODE_STATUS_SUCCESS)
+        if (disass_load_and_store_instruction (*instr) == LIBARCH_DECODE_STATUS_SUCCESS)
             (*instr)->group = ARM64_DECODE_GROUP_LOAD_AND_STORE;
         
     } else if ((op1 & ~8) == 5) {

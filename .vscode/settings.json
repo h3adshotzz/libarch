@@ -10,6 +10,8 @@
         "string": "c",
         "string_view": "c",
         "unordered_map": "c",
-        "vector": "c"
+        "vector": "c",
+        "load-and-store.h": "c",
+        "register.h": "c"
     }
 }
