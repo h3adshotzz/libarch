@@ -261,7 +261,64 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_pstate (instruction_t **instr)
 {
+    unsigned op1 = select_bits ((*instr)->opcode, 16, 18);
+    unsigned CRm = select_bits ((*instr)->opcode, 8, 11);
+    unsigned op2 = select_bits ((*instr)->opcode, 5, 7);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
 
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, op1);
+    libarch_instruction_add_field (instr, CRm);
+    libarch_instruction_add_field (instr, op2);
+    libarch_instruction_add_field (instr, Rt);
+
+    unsigned imm = CRm;
+    unsigned imm_01 = select_bits (CRm, 0, 1);
+
+    /* CFINV */
+    if (op1 == 0 && op2 == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_CFINV;
+        (*instr)->parsed = "cfinv";
+    
+    /* XAFLAG */
+    } else if (op1 == 0 && op2 == 1) {
+        (*instr)->type = ARM64_INSTRUCTION_XAFLAG;
+        (*instr)->parsed = "xaflag";
+
+    /* AXFLAG */
+    } else if (op1 == 0 && op2 == 2) {
+        (*instr)->type = ARM64_INSTRUCTION_AXFLAG;
+        (*instr)->parsed = "axflag";
+
+    /* MSR (Immediate) */
+    } else {
+        (*instr)->type = ARM64_INSTRUCTION_MSR;
+
+        /* PSTATE value table */
+        int pstate_table[][5] = {
+            { 0, 5, -1, ARM64_PSTATE_SPSEL, imm },
+            { 3, 6, -1, ARM64_PSTATE_DAIFSET, imm },
+            { 3, 7, -1, ARM64_PSTATE_DAIFCLR, imm },
+            { 0, 3, -1, ARM64_PSTATE_UAO, imm },
+            { 0, 4, -1, ARM64_PSTATE_PAN, imm },
+            { 1, 0, 0, ARM64_PSTATE_ALLINT, imm_01 },
+            { 3, 1, -1, ARM64_PSTATE_SSBS, imm },
+            { 3, 2, -1, ARM64_PSTATE_DIT, imm },
+            { 3, 3, 1, ARM64_PSTATE_SVCRSM, imm_01 },
+            { 3, 3, 2, ARM64_PSTATE_SVCRSM, imm_01 },
+            { 3, 3, 3, ARM64_PSTATE_SVCRSM, imm_01 },
+            { 3, 4, -1, ARM64_PSTATE_TC0, imm },
+        };
+
+        for (int i = 0; i < sizeof (pstate_table) / sizeof (pstate_table[0]); i++) {
+            if ((pstate_table[i][0] == op1 && pstate_table[i][1] == op2) &&
+                (pstate_table[i][2] == -1 || pstate_table[i][2] == (CRm >> 1))) {
+                libarch_instruction_add_operand_extra (instr, ARM64_OPERAND_TYPE_PSTATE, pstate_table[i][3]);
+                libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &pstate_table[i][4], ARM64_IMMEDIATE_TYPE_UINT);
+            }
+        }
+    }
+    return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
 
