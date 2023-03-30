@@ -16,7 +16,7 @@
 #include <assert.h>
 
 #include "instruction.h"
-//#include "decoder/branch.h"
+#include "decoder/branch.h"
 //#include "decoder/load-and-store.h"
 #include "decoder/data-processing.h"
 
@@ -214,7 +214,7 @@ libarch_disass (instruction_t **instr)
         
     } else if ((op1 >> 1) == 5) {
         // Branch, Exception, System Register
-        //if (disass_branch_exception_sys_instruction (*instr) == LIBARCH_DECODE_STATUS_SUCCESS)
+        if (disass_branch_exception_sys_instruction (*instr) == LIBARCH_DECODE_STATUS_SUCCESS)
             (*instr)->group = ARM64_DECODE_GROUP_BRANCH_EXCEPTION_SYSREG;
         
     } else if ((op1 & ~10) == 4) {

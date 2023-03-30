@@ -36,6 +36,19 @@
 #define ARM64_DECODE_SUBGROUP_BITFIELD                      6
 #define ARM64_DECODE_SUBGROUP_EXTRACT                       7
 
+#define ARM64_DECODE_SUBGROUP_CONDITIONAL_BRANCH                1
+#define ARM64_DECODE_SUBGROUP_EXCEPTION_GENERATION              2
+#define ARM64_DECODE_SUBGROUP_SYS_INSTRUCTION_WITH_REGISTER     3    
+#define ARM64_DECODE_SUBGROUP_HINTS                             4
+#define ARM64_DECODE_SUBGROUP_BARRIERS                          5
+#define ARM64_DECODE_SUBGROUP_PSTATE                            6
+#define ARM64_DECODE_SUBGROUP_SYSTEM_INSTRUCTION                7
+#define ARM64_DECODE_SUBGROUP_SYSTEM_REGISTER_MOVE              8
+#define ARM64_DECODE_SUBGROUP_UNCONDITIONAL_BRANCH_REGISTER     9
+#define ARM64_DECODE_SUBGROUP_UNCONDITIONAL_BRANCH_IMMEDIATE    10   
+#define ARM64_DECODE_SUBGROUP_COMPARE_AND_BRANCH_IMMEDIATE      11
+#define ARM64_DECODE_SUBGROUP_TEST_AND_BRANCH_IMMEDIATE         12
+
 /**
  *  NOTE:   This header contains definitions of arm64 instructions. The actual
  *          libarch instruction structures and functions are all in the header

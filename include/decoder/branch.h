@@ -19,12 +19,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "instruction.h"
+
 #include "arm64/arm64-instructions.h"
 #include "arm64/arm64-registers.h"
-#include "instruction.h"
-#include "utils.h"
+#include "arm64/arm64-common.h"
 
-libarch_return_t
+
+/**
+ * 
+ * 
+ */
+LIBARCH_EXPORT LIBARCH_API
+decode_status_t
 disass_branch_exception_sys_instruction (instruction_t *instr);
 
 #endif /* __libarch_decoder__branch_h__ */
