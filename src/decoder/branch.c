@@ -326,7 +326,20 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_system_instruction (instruction_t **instr)
 {
+    unsigned L = select_bits ((*instr)->opcode, 21, 21);
+    unsigned op1 = select_bits ((*instr)->opcode, 16, 18);
+    unsigned CRn = select_bits ((*instr)->opcode, 12, 15);
+    unsigned CRm = select_bits ((*instr)->opcode, 8, 11);
+    unsigned op2 = select_bits ((*instr)->opcode, 5, 7);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
 
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, L);
+    libarch_instruction_add_field (instr, op1);
+    libarch_instruction_add_field (instr, CRn);
+    libarch_instruction_add_field (instr, CRm);
+    libarch_instruction_add_field (instr, op2);
+    libarch_instruction_add_field (instr, Rt);
 }
 
 
@@ -334,7 +347,53 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_system_register_move (instruction_t **instr)
 {
+    unsigned L = select_bits ((*instr)->opcode, 21, 21);
+    unsigned o0 = select_bits ((*instr)->opcode, 19, 19);
+    unsigned op1 = select_bits ((*instr)->opcode, 16, 18);
+    unsigned CRn = select_bits ((*instr)->opcode, 12, 15);
+    unsigned CRm = select_bits ((*instr)->opcode, 8, 11);
+    unsigned op2 = select_bits ((*instr)->opcode, 5, 7);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
 
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, L);
+    libarch_instruction_add_field (instr, o0);
+    libarch_instruction_add_field (instr, op1);
+    libarch_instruction_add_field (instr, CRn);
+    libarch_instruction_add_field (instr, CRm);
+    libarch_instruction_add_field (instr, op2);
+    libarch_instruction_add_field (instr, Rt);
+
+    /* Calculate system register */
+    unsigned sysreg = ((((((2 + o0) << 14) | (op1 << 11)) | (CRn << 7)) | (CRm << 3)) | op2);
+
+    /* MSR (register) */
+    if (L == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_MSR;
+
+    /* MRS */
+    } else {
+        (*instr)->type = ARM64_INSTRUCTION_MRS;
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+    }
+
+    /* If the sysreg is recognised, then add the register as ARM64_REGISTER_TYPE_SYSTEM */
+    if (libarch_get_system_register (sysreg)) {
+        libarch_instruction_add_operand_register (instr, sysreg, 64, ARM64_REGISTER_TYPE_SYSTEM, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+    } else {
+        /* S<op0>_<op1>_<Cn>_<Cm>_<op2> */
+        libarch_instruction_add_operand_immediate (instr, (o0 == 0) ? 2 : 3, ARM64_IMMEDIATE_TYPE_SYSS);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op1, ARM64_IMMEDIATE_TYPE_UINT);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRn, ARM64_IMMEDIATE_TYPE_SYSC);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_SYSC);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op2, ARM64_IMMEDIATE_TYPE_UINT);
+    }
+
+    /* For MSR, the Rt register comes after the system registers */
+    if (L == 0)
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+
+    return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
 
@@ -402,13 +461,13 @@ disass_branch_exception_sys_instruction (instruction_t *instr)
         if (decode_barriers (&instr))
             instr->subgroup = ARM64_DECODE_SUBGROUP_BARRIERS;
 
-    } else if (op0 == 6 && (op1 & ~0x70) == 0x1004) {
-        if (decode_pstate (&instr))
-            instr->subgroup = ARM64_DECODE_SUBGROUP_PSTATE;
-
     } else if (op0 == 6 && ((op1 >> 7) & ~4) == 0x21) {
         if (decode_system_instruction (&instr))
             instr->subgroup = ARM64_DECODE_SUBGROUP_SYSTEM_INSTRUCTION;
+
+    } else if (op0 == 6 && (op1 & ~0x70) == 0x1004) {
+        if (decode_pstate (&instr))
+            instr->subgroup = ARM64_DECODE_SUBGROUP_PSTATE;
 
     } else if (op0 == 6 && (((op1 >> 8) & ~2) == 0x11)) {
         if (decode_system_register_move (&instr))

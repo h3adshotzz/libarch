@@ -53,10 +53,24 @@ e29b00d4    -  	hvc 	#0x4df
 225caad4    -  	dcps2  	#0x52e1
 43cba4d4    -  	dcps3  	#0x265a
 
-5f2403d5    -   bti c
+5f2403d5    -   bti     c
 1f2003d5  	-   nop
 3f2003d5    -  	yield
 5f2003d5    -  	wfe
 7f2003d5    -  	wfi
 bf2003d5    -  	sevl
 7f2303d5    -   pacibsp
+
+5f3f03d5    -  	clrex
+9f3a03d5    -  	dsb	    ishst
+9f3b03d5    -  	dsb	    ish
+df3f03d5    -  	isb
+
+bf4100d5    -  	msr	    SPSel, #1
+df4703d5    -  	msr	    DAIFSet, #7
+ff4403d5    -  	msr	    DAIFClr, #4
+
+9f4100d5  	-   msr	    S0_0_C4_C1_4, xzr
+88fe1ed5    -  	msr	    S3_6_C15_C14_4, x8
+21ff3ed5    -  	mrs	    x1, S3_6_C15_C15_1
+
