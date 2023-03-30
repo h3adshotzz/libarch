@@ -27,9 +27,9 @@
 
 /* LIBARCH Source Version, i.e. 312.56.12 */
 #define LIBARCH_SOURCE_VERSION_MAJOR      "8"
-#define LIBARCH_SOURCE_VERSION_MINOR      "55"
+#define LIBARCH_SOURCE_VERSION_MINOR      "59"
 
-#define LIBARCH_SOURCE_VERSION            "libarch-100.8.55"
+#define LIBARCH_SOURCE_VERSION            "libarch-100.8.59"
 
 /**
  *  Define a Target type for LIBARCH to both display within the help
