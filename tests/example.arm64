@@ -79,3 +79,6 @@ c0033fd6    -  	blr	    x30
 
 c0035fd6    -  	ret
 e0039fd6    -  	eret
+
+ddffff97       bl       0xffffffffffffff74
+01000014       b        0x4

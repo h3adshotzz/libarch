@@ -488,7 +488,22 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_unconditional_branch_immediate (instruction_t **instr)
 {
+    unsigned op = select_bits ((*instr)->opcode, 31, 31);
+    unsigned imm26 = select_bits ((*instr)->opcode, 0, 25);
 
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, op);
+    libarch_instruction_add_field (instr, imm26);
+
+    /* B / BL */
+    if (op == 0) (*instr)->type = ARM64_INSTRUCTION_B;
+    else (*instr)->type = ARM64_INSTRUCTION_BL;
+
+    /* Extend the pc-relative immediate value */
+    long label = (signed) sign_extend (imm26 << 2, 28) + (*instr)->addr;
+    libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG);
+
+    return LIBARCH_RETURN_SUCCESS;
 }
 
 
