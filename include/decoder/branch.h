@@ -22,6 +22,7 @@
 #include "instruction.h"
 
 #include "arm64/arm64-instructions.h"
+#include "arm64/arm64-conditions.h"
 #include "arm64/arm64-registers.h"
 #include "arm64/arm64-common.h"
 

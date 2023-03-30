@@ -216,7 +216,44 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_barriers (instruction_t **instr)
 {
+    unsigned CRm = select_bits ((*instr)->opcode, 8, 11);
+    unsigned op2 = select_bits ((*instr)->opcode, 5, 7);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
 
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, CRm);
+    libarch_instruction_add_field (instr, op2);
+    libarch_instruction_add_field (instr, Rt);
+
+    /* If Rt doesn't equal 0x1f, is unallocated */
+    if (Rt != 0b11111) return LIBARCH_DECODE_STATUS_SOFT_FAIL;
+
+    /* CLREX */
+    if (op2 == 2 && Rt == 0b11111) {
+        (*instr)->type = ARM64_INSTRUCTION_CLREX;
+
+        if (CRm < 15)
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_UINT);
+
+    /* DSB / DMB / ISB / SB / TCOMMIT */
+    } else {
+
+        /* DSB */
+        if (op2 == 4) {
+            (*instr)->type = ARM64_INSTRUCTION_DSB;
+            libarch_instruction_add_operand_extra (instr, ARM64_OPERAND_TYPE_MEMORY_BARRIER, CRm);
+        } else if (op2 == 5) {
+            (*instr)->type = ARM64_INSTRUCTION_DMB;
+        } else if (op2 == 6) {
+            (*instr)->type = ARM64_INSTRUCTION_ISB;
+        } else if (op2 == 7) {
+            (*instr)->type = ARM64_INSTRUCTION_SB;
+        } else if (op2 == 3) {
+            (*instr)->type = ARM64_INSTRUCTION_TCOMMIT;
+        }
+    }
+
+    return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
 

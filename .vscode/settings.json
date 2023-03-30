@@ -4,6 +4,7 @@
         "ios": "c",
         "utils.h": "c",
         "__locale": "c",
-        "arm64-registers.h": "c"
+        "arm64-registers.h": "c",
+        "branch.h": "c"
     }
 }

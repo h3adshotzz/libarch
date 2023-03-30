@@ -65,6 +65,7 @@
 #define ARM64_OPERAND_TYPE_AT_NAME              22
 #define ARM64_OPERAND_TYPE_TLBI_OP              23
 #define ARM64_OPERAND_TYPE_PRFOP                24
+#define ARM64_OPERAND_TYPE_MEMORY_BARRIER       25
 
 /* Register Options */
 #define ARM64_REGISTER_OPERAND_OPT_NONE         0
