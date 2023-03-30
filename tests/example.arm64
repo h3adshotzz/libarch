@@ -74,3 +74,8 @@ ff4403d5    -  	msr	    DAIFClr, #4
 88fe1ed5    -  	msr	    S3_6_C15_C14_4, x8
 21ff3ed5    -  	mrs	    x1, S3_6_C15_C15_1
 
+00021fd6    -  	br	    x16
+c0033fd6    -  	blr	    x30
+
+c0035fd6    -  	ret
+e0039fd6    -  	eret

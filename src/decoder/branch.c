@@ -401,7 +401,86 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_unconditional_branch_register (instruction_t **instr)
 {
+    unsigned opc = select_bits ((*instr)->opcode, 21, 24);
+    unsigned op2 = select_bits ((*instr)->opcode, 16, 20);
+    unsigned op3 = select_bits ((*instr)->opcode, 10, 15);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned op4 = select_bits ((*instr)->opcode, 0, 4);
 
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, opc);
+    libarch_instruction_add_field (instr, op2);
+    libarch_instruction_add_field (instr, op3);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, op4);
+
+    // Special bits for these instructions
+    unsigned Z = select_bits ((*instr)->opcode, 24, 24);
+    unsigned M = select_bits ((*instr)->opcode, 10, 10);
+    unsigned Rm = op4;
+
+    typedef struct {
+        /* Instruction bits */
+        int opc, op2, op3, Rn, op4, Rm;
+        int Z, M;
+
+        arm64_instr_t type;
+
+        /* Register flags */
+        int use_rn;
+        int use_rm;
+    } opcode;
+
+    opcode opcode_table[] = {
+        { 0, 0x1f, 0, -1, 0, -1, -1, -1, ARM64_INSTRUCTION_BR, 1, 0 },
+        { 0, 0x1f, 2, -1, 0x1f, 0x1f, 0, 0, ARM64_INSTRUCTION_BRAAZ, 1, 0 },
+        { 8, 0x1f, 2, -1, 0x1f, 0, 1, 0, ARM64_INSTRUCTION_BRAA, 1, 1 },
+        { 0, 0x1f, 3, -1, 0x1f, 0x1f, 0, 1, ARM64_INSTRUCTION_BRABZ, 1, 0 },
+        { 8, 0x1f, 3, -1, 0x1f, -1, 1, 1, ARM64_INSTRUCTION_BRAB, 1, 1 },
+
+        { 1, 0x1f, 0, -1, 0, -1, -1, -1, ARM64_INSTRUCTION_BLR, 1, 0 },
+        { 1, 0x1f, 2, -1, 0x1f, 0x1f, 0, 0, ARM64_INSTRUCTION_BLRAAZ, 1, 0 },
+        { 1, 0x1f, 2, -1, 0x1f, -1, 1, 0, ARM64_INSTRUCTION_BLRAA, 1, 1 },
+        { 1, 0x1f, 3, -1, 0x1f, 0x1f, 0, 1, ARM64_INSTRUCTION_BLRABZ, 1, 0 },
+        { 1, 0x1f, 3, -1, 0x1f, -1, 1, 1, ARM64_INSTRUCTION_BLRAB, 1, 1 },
+
+        { 2, 0x1f, 0, -1, 0, -1, -1, -1, ARM64_INSTRUCTION_RET, 1, 0 },
+        { 2, 0x1f, 2, 0x1f, 0x1f, -1, -1, 0, ARM64_INSTRUCTION_RETAA, 0, 0 },
+        { 2, 0x1f, 3, 0x1f, 0x1f, -1, -1, 1, ARM64_INSTRUCTION_RETAB, 0, 0 },
+
+        { 4, 0x1f, 0, 0x1f, 0, -1, -1, -1, ARM64_INSTRUCTION_ERET, 0, 0 },
+        { 4, 0x1f, 2, 0x1f, 0x1f, -1, -1, 0, ARM64_INSTRUCTION_ERETAA, 0, 0 },
+        { 4, 0x1f, 3, 0x1f, 0x1f, -1, -1, 1, ARM64_INSTRUCTION_ERETAB, 0, 0 },
+
+        { 5, 0x1f, 0, 0x1f, 0, -1, -1, -1, ARM64_INSTRUCTION_DRPS, 0, 0 },
+    };
+
+    for (int i = 0; i < sizeof (opcode_table) / sizeof (opcode_table[0]); i++) {
+        if (opcode_table[i].opc == opc && opcode_table[i].op2 == op2 && opcode_table[i].op3 == op3 &&
+            (opcode_table[i].Rn == -1 || opcode_table[i].Rn == Rn) &&
+            opcode_table[i].op4 == 0 &&
+            (opcode_table[i].Rm == -1 || opcode_table[i].Rm == Rm) &&
+            (opcode_table[i].Z == -1 || opcode_table[i].Z == Z) &&
+            (opcode_table[i].M == -1 || opcode_table[i].M == M)) {
+            // blah
+            (*instr)->type = opcode_table[i].type;
+
+            printf ("use_rn: %d, use_rm: %d\n", opcode_table[i].use_rn, opcode_table[i].use_rm);
+
+            /* Special check for 'ret' instruction */
+            if (opcode_table[i].type == ARM64_INSTRUCTION_RET && Rn == 30) break;
+
+            if (opcode_table[i].use_rn)
+                libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
+            if (opcode_table[i].use_rm)
+                libarch_instruction_add_operand_register (instr, Rm, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
+            break;
+        }
+    }
+
+    return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
 
