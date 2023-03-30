@@ -84,7 +84,22 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_system_instruction_with_register (instruction_t **instr)
 {
+    unsigned CRm = select_bits ((*instr)->opcode, 8, 11);
+    unsigned op2 = select_bits ((*instr)->opcode, 5, 7);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
 
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, CRm);
+    libarch_instruction_add_field (instr, op2);
+    libarch_instruction_add_field (instr, Rt);
+
+    /* Determine instruction */
+    arm64_reg_t opcode_table[2] = { ARM64_INSTRUCTION_WFET, ARM64_INSTRUCTION_WFIT };
+    (*instr)->type = opcode_table[op2];
+
+    libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
+    return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
 
