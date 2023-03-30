@@ -107,7 +107,108 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_hints (instruction_t **instr)
 {
+    unsigned CRm = select_bits ((*instr)->opcode, 8, 11);
+    unsigned op2 = select_bits ((*instr)->opcode, 5, 7);
+    unsigned Z = select_bits ((*instr)->opcode, 13, 13);
+    unsigned D = select_bits ((*instr)->opcode, 10, 10);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rd = select_bits ((*instr)->opcode, 0, 4);
 
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, CRm);
+    libarch_instruction_add_field (instr, op2);
+    libarch_instruction_add_field (instr, Z);
+    libarch_instruction_add_field (instr, D);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rd);
+
+    /**
+     *  NOTE:   To try and cut down the amount of if-else blocks, I decided to go with this
+     *          approach of creating an array of all the instructions to parse in this
+     *          subgroup, along with the CRm, op2 and D/Z values, and register operands,
+     *          and iterate through it to determine which one it is.
+     * 
+     *          The original can be found here, and should be discussed as an optimisation
+     *          in the final project report:
+     *          https://github.com/h3adshotzz/libarch/blob/f0218715a29b36ee91e12e55724d19c6fbb8b00b/src/decoder/branch.c
+    */
+    typedef struct {
+        unsigned CRm;
+        unsigned op2;
+        unsigned xtra;
+        arm64_instr_t type;
+        int Rd; // -1
+        int Rn; // -1
+    } opcode;
+
+    
+    /* opcode table */
+    opcode opcode_table[] = {
+        /* CRm == 0 */
+        { 0, 0, -1, ARM64_INSTRUCTION_NOP, -1, -1 },
+        { 0, 1, -1, ARM64_INSTRUCTION_YIELD, -1, -1 },
+        { 0, 2, -1, ARM64_INSTRUCTION_WFE, -1, -1 },
+        { 0, 3, -1, ARM64_INSTRUCTION_WFI, -1, -1 },
+        { 0, 4, -1, ARM64_INSTRUCTION_SEV, -1, -1 },
+        { 0, 5, -1, ARM64_INSTRUCTION_SEVL, -1, -1 },
+        { 0, 6, -1, ARM64_INSTRUCTION_DGH, -1, -1 },
+        { 0, 7, 0, ARM64_INSTRUCTION_XPACI, Rd, -1 },
+        { 0, 7, 1, ARM64_INSTRUCTION_XPACD, Rd, -1 },
+
+        /* CRm == 1 */
+        { 1, 0, 0, ARM64_INSTRUCTION_PACIZA, Rd, Rn },
+        { 1, 0, 1, ARM64_INSTRUCTION_PACIA1716, -1, -1 },
+        { 1, 1, 0, ARM64_INSTRUCTION_PACIZA, Rd, Rn },
+        { 1, 1, 1, ARM64_INSTRUCTION_PACIB1716, -1, -1 },
+        { 1, 4, 0, ARM64_INSTRUCTION_AUTIZA, Rd, Rn },
+        { 1, 4, 1, ARM64_INSTRUCTION_AUTIA1716, -1, -1 },
+        { 1, 6, 0, ARM64_INSTRUCTION_AUTIZB, Rd, Rn },
+        { 1, 6, 1, ARM64_INSTRUCTION_AUTIB1716, -1, -1 },
+
+        /* CRm == 2 */
+        { 2, 0, -1, ARM64_INSTRUCTION_ESB, -1, -1 },
+        { 2, 1, -1, ARM64_INSTRUCTION_PSB_CSYNC, -1, -1 },
+        { 2, 2, -1, ARM64_INSTRUCTION_TSB_CSYNC, -1, -1 },
+        { 2, 4, -1, ARM64_INSTRUCTION_CSDB, -1, -1 },
+
+        /* CRm == 3 */
+        { 3, 0, -1, ARM64_INSTRUCTION_PACIAZ, -1, -1 },
+        { 3, 1, -1, ARM64_INSTRUCTION_PACIASP, -1, -1 },
+        { 3, 2, -1, ARM64_INSTRUCTION_PACIBZ, -1, -1 },
+        { 3, 3, -1, ARM64_INSTRUCTION_PACIBSP, -1, -1 },
+        { 3, 4, -1, ARM64_INSTRUCTION_AUTIAZ, -1, -1 },
+        { 3, 5, -1, ARM64_INSTRUCTION_AUTIASP, -1, -1 },
+        { 3, 6, -1, ARM64_INSTRUCTION_AUTIAZ, -1, -1 },
+        { 3, 7, -1, ARM64_INSTRUCTION_AUTIASP, -1, -1 },
+
+    };
+
+    /* Only CRm == 0 instructions check 'D' */
+    unsigned xtra = (CRm == 0) ? D : Z;
+
+    /* Determine which one instruction it is */
+    for (int i = 0; i < sizeof (opcode_table) / sizeof (opcode); i++) {
+        if (opcode_table[i].CRm == CRm && opcode_table[i].op2 == op2 &&
+        (opcode_table[i].xtra == -1 || opcode_table[i].xtra == xtra)) {
+            (*instr)->type = opcode_table[i].type;
+
+            if (opcode_table[i].Rd != -1)
+                libarch_instruction_add_operand_register (instr, Rd, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
+            if (opcode_table[i].Rn != -1)
+                libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+        } 
+    }
+
+    /* BTI is annoying and is completely different to the others */
+    if (CRm == 4 && (op2 & ~6) == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_BTI;
+
+        const char *targets[] = { "", "c", "j", "jc" };
+        libarch_instruction_add_operand_target (instr, targets[op2 >> 1]);
+    }
+
+    return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
 
