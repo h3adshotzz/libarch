@@ -18,15 +18,7 @@
 
 #include <stdlib.h>
 
-/* SysOp's */       /** NOTE: MOVE TO arm64-common.h */
-enum {
-    ARM64_SYSOP_AT = 0,
-    ARM64_SYSOP_DC,
-    ARM64_SYSOP_IC,
-    ARM64_SYSOP_BRB,
-    ARM64_SYSOP_TLBI,
-    ARM64_SYSOP_SYS,
-};
+
 
 
 

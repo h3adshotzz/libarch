@@ -5,6 +5,11 @@
         "utils.h": "c",
         "__locale": "c",
         "arm64-registers.h": "c",
-        "branch.h": "c"
+        "branch.h": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c",
+        "unordered_map": "c",
+        "vector": "c"
     }
 }

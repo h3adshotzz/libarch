@@ -21,6 +21,16 @@
 
 #include "arm64/arm64-registers.h"
 
+/* SysOp's */
+enum {
+    ARM64_SYSOP_AT = 0,
+    ARM64_SYSOP_DC,
+    ARM64_SYSOP_IC,
+    ARM64_SYSOP_BRB,
+    ARM64_SYSOP_TLBI,
+    ARM64_SYSOP_SYS,
+};
+
 /******************************************************************************
 *       Register Size Macro's
 *******************************************************************************/

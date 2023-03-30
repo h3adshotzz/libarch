@@ -89,3 +89,25 @@ b6e3acb4    -  	cbz 	x22, 0xfffffffffff59c78
 
 a8005836    -  	tbz 	w8, 0xb, 0x14
 08fa2f37    -  	tbnz	w8, 5, 0xffffffffffffff445
+
+407808d5    -  	at	    s1e0r, x0
+207808d5    -  	at	    s1e1w, x0
+137808d5    -  	at	    s1e1r, x19
+
+3c8308d5    -  	tlbi	vae1is, x28
+1f8308d5    -  	tlbi	vmalle1is
+e98308d5    -  	tlbi	vaale1is, x9
+488308d5    -  	tlbi	aside1is, x8
+a98308d5    -  	tlbi	vale1is, x9
+698308d5    -  	tlbi	vaae1is, x9
+1f8708d5    -  	tlbi	vmalle1
+df830cd5    -  	tlbi	vmalls12e1is
+a8800cd5    -  	tlbi	ipas2le1is, x8
+28800cd5    -  	tlbi	ipas2e1is, x8
+488708d5    -  	tlbi	aside1, x8
+
+ca970fd5    -  	sys	    #7, c9, c7, #6, x10
+1c860bd5    -  	sys	    #3, c8, c6, #0, x28
+7a120dd5    -  	sys	    #5, c1, c2, #3, x26
+0e4f2cd5    -  	sysl	x14, #4, c4, c15, #0
+b5bd2dd5    -  	sysl	x21, #5, c11, c13, #5

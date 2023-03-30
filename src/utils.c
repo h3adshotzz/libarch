@@ -16,8 +16,9 @@
 #include <stdio.h>
 #include "utils.h"
 
-#include "arm64/arm64-misc.h"
 #include "arm64/arm64-tlbi-ops.h"
+#include "arm64/arm64-common.h"
+#include "arm64/arm64-misc.h"
 
 /**
  *  AArch64 Reference Manual shared/functions/common/

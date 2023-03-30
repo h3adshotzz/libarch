@@ -339,6 +339,79 @@ decode_system_instruction (instruction_t **instr)
     libarch_instruction_add_field (instr, CRm);
     libarch_instruction_add_field (instr, op2);
     libarch_instruction_add_field (instr, Rt);
+
+    /**
+     * NOTE:    As much as I would like to use the opcode_table thing I've been
+     *          doing, I think here it would be too messy. But I'll use it for
+     *          the Address Translation names though.
+     */
+
+    /* AT */
+    if (L == 0 && CRn == 7 && (CRm == 8 || CRm == 9) && SysOp (op1, 0b0111, CRm, op2) == ARM64_SYSOP_AT) {
+        (*instr)->type = ARM64_INSTRUCTION_AT;
+
+        int at_table[][4] = {
+            { 0, 0, 0, ARM64_AT_NAME_S1E1R },
+            { 0, 0, 1, ARM64_AT_NAME_S1E1W },
+            { 0, 0, 2, ARM64_AT_NAME_S1E0R },
+            { 0, 0, 3, ARM64_AT_NAME_S1E0W },
+
+            { 0, 1, 0, ARM64_AT_NAME_S1E1RP },
+            { 0, 1, 1, ARM64_AT_NAME_S1E1WP },
+
+            { 4, 0, 0, ARM64_AT_NAME_S1E2R },
+            { 4, 0, 1, ARM64_AT_NAME_S1E2W },
+            { 4, 0, 4, ARM64_AT_NAME_S12E1R },
+            { 4, 0, 5, ARM64_AT_NAME_S12E1W },
+            { 4, 0, 6, ARM64_AT_NAME_S12E0R },
+            { 4, 0, 7, ARM64_AT_NAME_S12E0W },
+
+            { 6, 1, 0, ARM64_AT_NAME_S1E3R },
+            { 6, 1, 1, ARM64_AT_NAME_S1E3W },
+        };
+
+        for (int i = 0; i < sizeof (at_table) / sizeof (at_table[0]); i++) {
+            if (at_table[i][0] == op1 && at_table[i][1] == select_bits (CRm, 0, 0) && at_table[i][2] == op2)
+                libarch_instruction_add_operand_extra (instr, ARM64_OPERAND_TYPE_AT_NAME, at_table[i][3]);
+        }
+        libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
+    /* TLBI */
+    } else if ((CRn >> 1) == 4 && SysOp (op1, CRn, CRm, op2) == ARM64_SYSOP_TLBI) {
+        (*instr)->type = ARM64_INSTRUCTION_TLBI;
+
+        libarch_instruction_add_operand_extra (instr, ARM64_OPERAND_TYPE_TLBI_OP, get_tlbi (op1, CRn, CRm, op2));
+
+        // Rt is optional
+        if (Rt != 0b11111)
+            libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+    } else {
+
+        /* SYSL */
+        if (L == 1) (*instr)->type = ARM64_INSTRUCTION_SYSL;
+        else (*instr)->type = ARM64_INSTRUCTION_SYS;
+
+        /**
+         *  The instructions CFP, CPP, DC, DVP and IC are left to default to
+         *  'SYS'. They each have additional operands but aren't very common
+         *  so to save the operand_t struct becoming a monster, just let them
+         *  default to sys instructions.
+         */
+
+        /* For SYSL, the Rt comes first */
+        if (L == 1) libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op1, ARM64_IMMEDIATE_TYPE_UINT);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRn, ARM64_IMMEDIATE_TYPE_SYSC);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_SYSC);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op2, ARM64_IMMEDIATE_TYPE_UINT);
+
+        // Rt is optional
+        if (Rt != 0b11111 && (*instr)->type == ARM64_INSTRUCTION_SYS)
+            libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
+    }
+
 }
 
 
