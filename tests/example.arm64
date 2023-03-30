@@ -86,3 +86,6 @@ ddffff97    -   bl      0xffffffffffffff74
 65435334    -  	cbz 	w5, 0xa686c
 b6e3acb4    -  	cbz 	x22, 0xfffffffffff59c78
 7bfdffb5    -  	cbnz  	x27, 0xffffffffffffffb4
+
+a8005836    -  	tbz 	w8, 0xb, 0x14
+08fa2f37    -  	tbnz	w8, 5, 0xffffffffffffff445
