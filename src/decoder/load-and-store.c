@@ -155,7 +155,7 @@ decode_advanced_simd_load_store_multiple_structures (instruction_t **instr)
             if (reg_count >= 1 && reg_count <= 4)
                 imm = (Q == 0) ? imm_table[reg_count - 1] : imm_table_q[reg_count - 1];
 
-            libarch_instruction_add_operand_immediate (instr, imm, ARM64_IMMEDIATE_TYPE_INT | ARM64_IMMEDIATE_FLAG_OUTPUT_DECIMAL);
+            libarch_instruction_add_operand_immediate (instr, imm, ARM64_IMMEDIATE_TYPE_INT, ARM64_IMMEDIATE_OPERAND_OPT_PREFER_DECIMAL);
         }
     }
     return LIBARCH_DECODE_STATUS_SUCCESS;
@@ -166,6 +166,95 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_advanced_simd_load_store_single_structure (instruction_t **instr)
 {
+    unsigned Q = select_bits ((*instr)->opcode, 30, 30);
+    unsigned op2 = select_bits ((*instr)->opcode, 23, 24);
+    unsigned L = select_bits ((*instr)->opcode, 22, 22);
+    unsigned R = select_bits ((*instr)->opcode, 21, 21);
+    unsigned Rm = select_bits ((*instr)->opcode, 16, 20);
+    unsigned opcode = select_bits ((*instr)->opcode, 13, 15);
+    unsigned S = select_bits ((*instr)->opcode, 12, 12);
+    unsigned size = select_bits ((*instr)->opcode, 10, 11);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, Q);
+    libarch_instruction_add_field (instr, op2);
+    libarch_instruction_add_field (instr, L);
+    libarch_instruction_add_field (instr, R);
+    libarch_instruction_add_field (instr, Rm);
+    libarch_instruction_add_field (instr, opcode);
+    libarch_instruction_add_field (instr, S);
+    libarch_instruction_add_field (instr, size);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rt);
+
+    unsigned elem = (((opcode & 1) << 1) | R) + 1;
+    int index = 0;
+
+    /* Determine the Vector Arrangement */
+    int replicate = 0;
+    switch ((opcode >> 1))
+    {
+        case 3: replicate = 1; break;
+        case 0:
+            index = (Q << 3) | (S << 2) | size;
+            (*instr)->spec = ARM64_VEC_ARRANGEMENT_B;
+            break;
+
+        case 1:
+            index = (Q << 2) | (S << 1) | (size >> 1);
+            (*instr)->spec = ARM64_VEC_ARRANGEMENT_H;
+            break;
+        
+        case 2:
+            if ((size & 1) == 0) {
+                index = (Q << 1) | S;
+                (*instr)->spec = ARM64_VEC_ARRANGEMENT_S;
+            } else {
+                index = Q;
+                (*instr)->spec = ARM64_VEC_ARRANGEMENT_D;
+            }
+        default: LIBARCH_RETURN_VOID;
+    }
+
+    /* Select correct instruction type */
+    int reg_count = 0;
+    if (replicate) {
+        reg_count = ((elem * 2) - 1);
+        (*instr)->type = (ARM64_INSTRUCTION_LD1R - 1) + reg_count;
+    } else if (L == 0) {
+        reg_count = elem;
+        (*instr)->type = (ARM64_INSTRUCTION_ST1 - 1) + reg_count;
+    } else if (L == 1) {
+        reg_count = ((elem * 2) - 1);
+        (*instr)->type = (ARM64_INSTRUCTION_LD1 - 1) + reg_count;
+    }
+    printf ("reg: %d\n", reg_count);
+
+    /* Set the register operands */
+    if (reg_count == 1) {
+        libarch_instruction_add_operand_register_with_fix (instr, Rt, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, '{', '}');
+    } else {
+        for (int i = 0; i < reg_count; i++) {
+            if (i == 0) libarch_instruction_add_operand_register_with_fix (instr, i, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, '{', NULL);
+            else if (i == reg_count - 1) libarch_instruction_add_operand_register_with_fix (instr, i, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, NULL, '}');
+            else libarch_instruction_add_operand_register (instr, i, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_REGISTER_OPERAND_OPT_NONE);
+        }
+    }
+
+    /* Add the index */
+    libarch_instruction_add_operand_immediate_with_fix (instr, *(unsigned int *) &index, ARM64_IMMEDIATE_TYPE_UINT, '[', ']');
+
+    /* Add base register */
+    libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
+    /* Is the instruction post-indexed? */
+    if (op2 == 3) {
+        if (Rm != 0b11111) libarch_instruction_add_operand_register (instr, Rm, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+        else libarch_instruction_add_operand_immediate (instr, (Q == 0) ? 32 : 64, ARM64_IMMEDIATE_TYPE_INT, ARM64_IMMEDIATE_OPERAND_OPT_PREFER_DECIMAL);
+    }
+
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
@@ -174,6 +263,8 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_load_store_memory_tags (instruction_t **instr)
 {
+
+    /* Add fields in left-right order */
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
@@ -182,6 +273,8 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_load_store_exclusive_pair (instruction_t **instr)
 {
+
+    /* Add fields in left-right order */
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
@@ -190,6 +283,8 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_load_store_exclusive_register (instruction_t **instr)
 {
+
+    /* Add fields in left-right order */
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
@@ -198,6 +293,8 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_load_store_ordered (instruction_t **instr)
 {
+
+    /* Add fields in left-right order */
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
@@ -206,6 +303,8 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_load_register_literal (instruction_t **instr)
 {
+
+    /* Add fields in left-right order */
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
@@ -220,6 +319,7 @@ disass_load_and_store_instruction (instruction_t *instr)
     unsigned op2 = select_bits (instr->opcode, 23, 24);
     unsigned op3 = select_bits (instr->opcode, 16, 21);
     unsigned op4 = select_bits (instr->opcode, 10, 11);
+    printf ("load and store\n");
 
     if (op0 == 0 && op1 == 0 && op2 == 0 && (op3 >> 5) == 1) {
         if (decode_compare_and_swap_pair (&instr))

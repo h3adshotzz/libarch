@@ -63,7 +63,7 @@ libarch_instruction_create (uint32_t opcode, uint64_t addr)
 
 LIBARCH_API
 libarch_return_t
-libarch_instruction_add_operand_immediate (instruction_t **instr, uint64_t bits, uint8_t type)
+libarch_instruction_add_operand_immediate (instruction_t **instr, uint64_t bits, uint8_t type, uint32_t opts)
 {
     _libarch_instruction_realloc_operand (instr);
 
@@ -71,6 +71,26 @@ libarch_instruction_add_operand_immediate (instruction_t **instr, uint64_t bits,
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_IMMEDIATE;
     (*instr)->operands[(*instr)->operands_len - 1].imm_bits = bits;
     (*instr)->operands[(*instr)->operands_len - 1].imm_type = type;
+    (*instr)->operands[(*instr)->operands_len - 1].imm_opts = opts;
+
+    return LIBARCH_RETURN_SUCCESS;
+}
+
+LIBARCH_API
+libarch_return_t
+libarch_instruction_add_operand_immediate_with_fix (instruction_t **instr, uint64_t bits, uint8_t type, char prefix, char suffix)
+{
+    _libarch_instruction_realloc_operand (instr);
+
+    /* Add the new operand */
+    (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_IMMEDIATE;
+    (*instr)->operands[(*instr)->operands_len - 1].imm_bits = bits;
+    (*instr)->operands[(*instr)->operands_len - 1].imm_type = type;
+    (*instr)->operands[(*instr)->operands_len - 1].imm_opts = ARM64_IMMEDIATE_OPERAND_OPT_PREFER_DECIMAL;
+
+    /* Immediate prefix/suffix, e.g. [12] has a prefix '[' and suffix ']' */
+    (*instr)->operands[(*instr)->operands_len - 1].imm_prefix = prefix;
+    (*instr)->operands[(*instr)->operands_len - 1].imm_suffix = suffix;
 
     return LIBARCH_RETURN_SUCCESS;
 }

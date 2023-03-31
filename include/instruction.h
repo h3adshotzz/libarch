@@ -67,9 +67,12 @@
 #define ARM64_OPERAND_TYPE_PRFOP                24
 #define ARM64_OPERAND_TYPE_MEMORY_BARRIER       25
 
-/* Register Options */
-#define ARM64_REGISTER_OPERAND_OPT_NONE         0
-#define ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO  1
+/* Operand Options */
+#define ARM64_REGISTER_OPERAND_OPT_NONE             0
+#define ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO      1
+
+#define ARM64_IMMEDIATE_OPERAND_OPT_NONE            0
+#define ARM64_IMMEDIATE_OPERAND_OPT_PREFER_DECIMAL  2
 
 
 /**
@@ -116,6 +119,9 @@ typedef struct operand_t
     /* op_type == ARM64_OPERAND_TYPE_IMMEDIATE */
     uint64_t            imm_bits; 
     uint8_t             imm_type;
+    uint32_t            imm_opts;
+    char                imm_prefix;
+    char                imm_suffix;
 
     /* op_type == ARM64_OPERAND_TYPE_TARGET */
     char               *target;
@@ -222,7 +228,21 @@ LIBARCH_EXPORT LIBARCH_API
 libarch_return_t
 libarch_instruction_add_operand_immediate (instruction_t **instr, 
                                            uint64_t bits, 
-                                           uint8_t type);
+                                           uint8_t type,
+                                           uint32_t opts);
+
+
+/**
+ * 
+ * 
+ */
+LIBARCH_API
+libarch_return_t
+libarch_instruction_add_operand_immediate_with_fix (instruction_t **instr, 
+                                                    uint64_t bits, 
+                                                    uint8_t type, 
+                                                    char prefix, 
+                                                    char suffix);
 
 
 /**

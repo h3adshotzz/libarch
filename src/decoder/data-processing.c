@@ -56,7 +56,7 @@ decode_pc_relative_addressing (instruction_t **instr)
 
     /* Add operands */
     libarch_instruction_add_operand_register (instr, Rd, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
-    libarch_instruction_add_operand_immediate (instr, imm, imm_type);
+    libarch_instruction_add_operand_immediate (instr, imm, imm_type, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
@@ -105,7 +105,7 @@ decode_add_subtract_immediate (instruction_t **instr)
         /* ADD (immediate) */
         } else {
             (*instr)->type = ARM64_INSTRUCTION_ADD;
-            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
+            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
             /* Add the left-shift if present */
             if (sh) libarch_instruction_add_operand_shift (instr, 12, ARM64_SHIFT_TYPE_LSL);
@@ -122,7 +122,7 @@ decode_add_subtract_immediate (instruction_t **instr)
             (*instr)->type = ARM64_INSTRUCTION_CMN;
 
             libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
-            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
+            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
             /* Add the left-shift if present */
             if (sh) libarch_instruction_add_operand_shift (instr, 12, ARM64_SHIFT_TYPE_LSL);
@@ -133,7 +133,7 @@ decode_add_subtract_immediate (instruction_t **instr)
 
             libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
             libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
-            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
+            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
             /* Add the left-shift if present */
             if (sh) libarch_instruction_add_operand_shift (instr, 12, ARM64_SHIFT_TYPE_LSL);
@@ -146,7 +146,7 @@ decode_add_subtract_immediate (instruction_t **instr)
 
         libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
         libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
-        libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
+        libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
         /* Add the left-shift if present */
         if (sh) libarch_instruction_add_operand_shift (instr, 12, ARM64_SHIFT_TYPE_LSL);
@@ -158,7 +158,7 @@ decode_add_subtract_immediate (instruction_t **instr)
             (*instr)->type = ARM64_INSTRUCTION_CMP;
 
             libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
-            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
+            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
             /* Add the left-shift if present */
             if (sh) libarch_instruction_add_operand_shift (instr, 12, ARM64_SHIFT_TYPE_LSL);
@@ -169,7 +169,7 @@ decode_add_subtract_immediate (instruction_t **instr)
 
             libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
             libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
-            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG);
+            libarch_instruction_add_operand_immediate (instr, imm12, ARM64_IMMEDIATE_TYPE_ULONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
             /* Add the left-shift if present */
             if (sh) libarch_instruction_add_operand_shift (instr, 12, ARM64_SHIFT_TYPE_LSL);
@@ -211,8 +211,8 @@ decode_add_subtract_immediate_tags (instruction_t **instr)
     /* Add common operands */
     libarch_instruction_add_operand_register (instr, Rd, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
     libarch_instruction_add_operand_register (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
-    libarch_instruction_add_operand_immediate (instr, uimm6, ARM64_IMMEDIATE_TYPE_ULONG);
-    libarch_instruction_add_operand_immediate (instr, uimm4, ARM64_IMMEDIATE_TYPE_ULONG);
+    libarch_instruction_add_operand_immediate (instr, uimm6, ARM64_IMMEDIATE_TYPE_ULONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+    libarch_instruction_add_operand_immediate (instr, uimm4, ARM64_IMMEDIATE_TYPE_ULONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
     /* ADDG */
     if (sf == 1 && op == 0 && S == 0 && o2 == 0) {
@@ -306,7 +306,8 @@ decode_logical_immediate (instruction_t **instr)
     /* Add the immediate operand */
     libarch_instruction_add_operand_immediate (instr, 
         (imm_type == ARM64_IMMEDIATE_TYPE_LONG) ? *(long *)&imm : *(int *)&imm,
-         imm_type);
+         imm_type, 
+         ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
@@ -355,12 +356,13 @@ decode_move_wide_immediate (instruction_t **instr)
 
             libarch_instruction_add_operand_immediate (instr, 
                 (imm_type == ARM64_IMMEDIATE_TYPE_LONG) ? *(long *) &imm : *(int *) &imm,
-                imm_type);
+                imm_type, 
+                ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
         /* MOVN */
         } else {
             (*instr)->type = ARM64_INSTRUCTION_MOVN;
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm16, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm16, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
             /* Add the left-shift if present */
             if (shift) libarch_instruction_add_operand_shift (instr, shift, ARM64_SHIFT_TYPE_LSL);
@@ -380,12 +382,13 @@ decode_move_wide_immediate (instruction_t **instr)
 
             libarch_instruction_add_operand_immediate (instr, 
                 (imm_type == ARM64_IMMEDIATE_TYPE_LONG) ? *(long *) &imm : *(int *) &imm,
-                imm_type);
+                imm_type, 
+                ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
         /* MOVZ */
         } else {
             (*instr)->type = ARM64_INSTRUCTION_MOVZ;
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm16, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm16, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
             /* Add the left-shift if present */
             if (shift) libarch_instruction_add_operand_shift (instr, shift, ARM64_SHIFT_TYPE_LSL);
@@ -397,7 +400,7 @@ decode_move_wide_immediate (instruction_t **instr)
 
         /* Add operands */
         libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
-        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm16, ARM64_IMMEDIATE_TYPE_UINT);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm16, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
         /* Add the left-shift if present */
         if (shift) libarch_instruction_add_operand_shift (instr, shift, ARM64_SHIFT_TYPE_LSL);
@@ -445,7 +448,7 @@ decode_bitfield (instruction_t **instr)
         /* ADR */
         if ((sf == 0 && imms == 0b011111) || (sf == 1 && imms == 0b111111)) {
             (*instr)->type = ARM64_INSTRUCTION_ADR;
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &immr, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &immr, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
         /* SXTB / SXTH / SXTW */
         } else if (immr == 0 && (imms == 0b000111 || imms == 0b001111 || imms == 0b011111)) {
@@ -473,15 +476,15 @@ decode_bitfield (instruction_t **instr)
             }
 
             /* Add operands */
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT);
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
         /* SBFM */
         } else {
             (*instr)->type = ARM64_INSTRUCTION_SBFM;
 
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &immr, ARM64_IMMEDIATE_TYPE_UINT);
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &immr, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
         }
 
     } else if (opc == 1) {
@@ -498,8 +501,8 @@ decode_bitfield (instruction_t **instr)
             unsigned width = imms + 1;
 
             /* Add operands */
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT);
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
         /* BFI / BFXIL */
         } else if ((Rn != 0b11111 && (imms < immr)) || (imms >= immr)) {
@@ -514,16 +517,16 @@ decode_bitfield (instruction_t **instr)
             unsigned width = imms + 1 - lsb;
 
             libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT);
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
         /* BFM */
         } else {
             (*instr)->type = ARM64_INSTRUCTION_BFM;
 
             libarch_instruction_add_operand_register (instr, Rn, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &immr, ARM64_IMMEDIATE_TYPE_UINT);
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &immr, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
         }
 
     } else if (opc == 2) {
@@ -544,7 +547,7 @@ decode_bitfield (instruction_t **instr)
                 (*instr)->type = ARM64_INSTRUCTION_LSL;
                 imm = (size - 1) - imms;
             }
-            libarch_instruction_add_operand_immediate (instr, imm, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, imm, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
         /* UBFX / UBFIZ */
         } else if (imms < immr || BFXPreferred (sf, (opc >> 1), imms, immr)) {
@@ -556,8 +559,8 @@ decode_bitfield (instruction_t **instr)
             unsigned width = imms + 1;
 
             /* Add operands */
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT);
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &lsb, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &width, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
            
         /* UXTB / UXTH */
         } else if (immr == 0 && (imms == 0b000111 || imms == 0b001111)) {
@@ -569,8 +572,8 @@ decode_bitfield (instruction_t **instr)
             (*instr)->type = ARM64_INSTRUCTION_UBFM;
 
             /* Add Operands */
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int*) &immr, ARM64_IMMEDIATE_TYPE_UINT);
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int*) &imms, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int*) &immr, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int*) &imms, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
         }
     } else {
         return LIBARCH_DECODE_STATUS_SOFT_FAIL;
@@ -619,13 +622,13 @@ decode_extract (instruction_t **instr)
     /* ROR (immediate ) */
     if (Rn == Rm) {
         (*instr)->type = ARM64_INSTRUCTION_ROR;
-        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
     /* EXTR */
     } else {
         (*instr)->type == ARM64_INSTRUCTION_EXTR;
         libarch_instruction_add_operand_register (instr, Rm, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
-        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imms, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
     }
 
     return LIBARCH_DECODE_STATUS_SUCCESS;

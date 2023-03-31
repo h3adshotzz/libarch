@@ -37,7 +37,7 @@ decode_conditional_branch (instruction_t **instr)
     (*instr)->cond = cond;
 
     uint64_t imm = sign_extend(imm19 << 2, 64) + (*instr)->addr;
-    libarch_instruction_add_operand_immediate (instr, *(unsigned long *) &imm, ARM64_IMMEDIATE_TYPE_ULONG);
+    libarch_instruction_add_operand_immediate (instr, *(unsigned long *) &imm, ARM64_IMMEDIATE_TYPE_ULONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 }
 
 
@@ -73,7 +73,7 @@ decode_exception_generation (instruction_t **instr)
     else return LIBARCH_DECODE_STATUS_SOFT_FAIL;
 
     /* Add the operand */
-    libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm16, ARM64_IMMEDIATE_TYPE_UINT);
+    libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm16, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
@@ -232,7 +232,7 @@ decode_barriers (instruction_t **instr)
         (*instr)->type = ARM64_INSTRUCTION_CLREX;
 
         if (CRm < 15)
-            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_UINT);
+            libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
     /* DSB / DMB / ISB / SB / TCOMMIT */
     } else {
@@ -313,7 +313,7 @@ decode_pstate (instruction_t **instr)
             if ((pstate_table[i][0] == op1 && pstate_table[i][1] == op2) &&
                 (pstate_table[i][2] == -1 || pstate_table[i][2] == (CRm >> 1))) {
                 libarch_instruction_add_operand_extra (instr, ARM64_OPERAND_TYPE_PSTATE, pstate_table[i][3]);
-                libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &pstate_table[i][4], ARM64_IMMEDIATE_TYPE_UINT);
+                libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &pstate_table[i][4], ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
             }
         }
     }
@@ -401,10 +401,10 @@ decode_system_instruction (instruction_t **instr)
         /* For SYSL, the Rt comes first */
         if (L == 1) libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
 
-        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op1, ARM64_IMMEDIATE_TYPE_UINT);
-        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRn, ARM64_IMMEDIATE_TYPE_SYSC);
-        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_SYSC);
-        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op2, ARM64_IMMEDIATE_TYPE_UINT);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op1, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRn, ARM64_IMMEDIATE_TYPE_SYSC, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_SYSC, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op2, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
         // Rt is optional
         if (Rt != 0b11111 && (*instr)->type == ARM64_INSTRUCTION_SYS)
@@ -454,11 +454,11 @@ decode_system_register_move (instruction_t **instr)
         libarch_instruction_add_operand_register (instr, sysreg, 64, ARM64_REGISTER_TYPE_SYSTEM, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
     } else {
         /* S<op0>_<op1>_<Cn>_<Cm>_<op2> */
-        libarch_instruction_add_operand_immediate (instr, (o0 == 0) ? 2 : 3, ARM64_IMMEDIATE_TYPE_SYSS);
-        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op1, ARM64_IMMEDIATE_TYPE_UINT);
-        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRn, ARM64_IMMEDIATE_TYPE_SYSC);
-        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_SYSC);
-        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op2, ARM64_IMMEDIATE_TYPE_UINT);
+        libarch_instruction_add_operand_immediate (instr, (o0 == 0) ? 2 : 3, ARM64_IMMEDIATE_TYPE_SYSS, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op1, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRn, ARM64_IMMEDIATE_TYPE_SYSC, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &CRm, ARM64_IMMEDIATE_TYPE_SYSC, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+        libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &op2, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
     }
 
     /* For MSR, the Rt register comes after the system registers */
@@ -573,7 +573,7 @@ decode_unconditional_branch_immediate (instruction_t **instr)
 
     /* Extend the pc-relative immediate value */
     long label = (signed) sign_extend (imm26 << 2, 28) + (*instr)->addr;
-    libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG);
+    libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
     return LIBARCH_RETURN_SUCCESS;
 }
@@ -610,7 +610,7 @@ decode_compare_and_branch_immediate (instruction_t **instr)
     else (*instr)->type = ARM64_INSTRUCTION_CBNZ;
 
     libarch_instruction_add_operand_register (instr, Rt, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
-    libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG);
+    libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
     return LIBARCH_RETURN_SUCCESS;
 }
@@ -650,8 +650,8 @@ decode_test_and_branch_immediate (instruction_t **instr)
     else (*instr)->type = ARM64_INSTRUCTION_TBNZ;
 
     libarch_instruction_add_operand_register (instr, Rt, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
-    libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm, ARM64_IMMEDIATE_TYPE_UINT);
-    libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG);
+    libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &imm, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+    libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
     
     return LIBARCH_RETURN_SUCCESS;
 }

@@ -135,11 +135,14 @@ void create_string (instruction_t *instr)
                 printf ("%c%s%c", op->reg_prefix, reg, op->reg_suffix);
             else
                 printf ("%s", reg);
+
             goto check_comma;
         }
 
         /* Immediate */
         if (op->op_type == ARM64_OPERAND_TYPE_IMMEDIATE) {
+            if (op->imm_prefix) printf ("%c", op->imm_prefix);
+
             if (op->imm_type == ARM64_IMMEDIATE_TYPE_SYSC)
                 printf ("c%d", op->imm_bits);
             else if (op->imm_type == ARM64_IMMEDIATE_TYPE_SYSS)
@@ -147,13 +150,17 @@ void create_string (instruction_t *instr)
             else if (instr->type == ARM64_INSTRUCTION_SYS || instr->type == ARM64_INSTRUCTION_SYSL)
                 printf ("%d", op->imm_bits);
             else {
-                if ((op->imm_type & ARM64_IMMEDIATE_FLAG_OUTPUT_DECIMAL) == ARM64_IMMEDIATE_FLAG_OUTPUT_DECIMAL)
-                    printf ("#%d", op->imm_bits);
-                else if (op->imm_type == ARM64_IMMEDIATE_TYPE_LONG || op->imm_type == ARM64_IMMEDIATE_TYPE_ULONG)
-                    printf ("0x%llx", op->imm_bits);
-                else
-                    printf ("0x%x", op->imm_bits);
+                if (op->imm_opts == ARM64_IMMEDIATE_OPERAND_OPT_PREFER_DECIMAL) {
+                    printf ("%d", op->imm_bits);
+                } else {
+                    if (op->imm_type == ARM64_IMMEDIATE_TYPE_LONG || op->imm_type == ARM64_IMMEDIATE_TYPE_ULONG)
+                        printf ("0x%llx", op->imm_bits);
+                    else
+                        printf ("0x%x", op->imm_bits);
+                }
             }
+
+            if (op->imm_prefix) printf ("%c", op->imm_suffix);
             
             goto check_comma;
         }
