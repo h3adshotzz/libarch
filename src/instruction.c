@@ -121,8 +121,8 @@ libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64
         if (opts == ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO) a64reg = (size == 64) ? ARM64_REG_XZR : ARM64_32_REG_WZR;
         else a64reg = (size == 64) ? ARM64_REG_SP : ARM64_32_REG_SP;
 
-    /* Prevent overflows */
-    if (a64reg > 31) a64reg = (a64reg - 32);
+    /* Prevent overflows with vector registers */
+    if (a64reg > 31 && size > 64) a64reg = (a64reg - 32);
 
     /* Add the new operand */
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_REGISTER;

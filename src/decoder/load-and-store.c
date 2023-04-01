@@ -317,8 +317,54 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_load_store_exclusive_pair (instruction_t **instr)
 {
+    unsigned sz = select_bits ((*instr)->opcode, 30, 30);
+    unsigned L = select_bits ((*instr)->opcode, 22, 22);
+    unsigned Rs = select_bits ((*instr)->opcode, 16, 20);
+    unsigned o0 = select_bits ((*instr)->opcode, 15, 15);
+    unsigned Rt2 = select_bits ((*instr)->opcode, 10, 14);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
 
     /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, sz);
+    libarch_instruction_add_field (instr, L);
+    libarch_instruction_add_field (instr, Rs);
+    libarch_instruction_add_field (instr, o0);
+    libarch_instruction_add_field (instr, Rt2);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rt);
+
+    /* Determine instruction size, and register width */
+    uint32_t len;
+    unsigned size;
+    const char **regs;
+
+    if (sz == 1) _SET_64 (size, regs, len);
+    else _SET_32 (size, regs, len);
+
+    int opcode_table[][4] = {
+        { 0, 0, ARM64_INSTRUCTION_STXP, 1 },
+        { 0, 1, ARM64_INSTRUCTION_STLXP, 1 },
+        { 1, 0, ARM64_INSTRUCTION_LDXP, 0  },
+        { 1, 1, ARM64_INSTRUCTION_LDAXP, 0  },
+    };
+
+    for (int i = 0; i < sizeof (opcode_table) / sizeof (opcode_table[0]); i++) {
+        if (opcode_table[i][0] == L && opcode_table[i][1] == o0) {
+            (*instr)->type = opcode_table[i][2];
+
+            /* The ST_ instructions have a 32-bit Rs register operand first */
+            if (opcode_table[i][3])
+                libarch_instruction_add_operand_register (instr, Rs, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+
+            libarch_instruction_add_operand_register (instr, Rt, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_register (instr, Rt2, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+        }
+    }
+
+    /* Base register is always 64-bit */
+    libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
