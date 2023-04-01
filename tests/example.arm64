@@ -137,3 +137,9 @@ e1a7840c    -  	st1.4h	{ v1, v2 }, [sp], x4
 e47e3988    -  	stxp	w25, w4, wzr, [x23]
 86743ac8    -  	stxp	w26, x6, x29, [x4]
 0a4063c8    -  	ldxp	x10, x16, [x0]
+
+c4691e08    -  	stxrb	w30, w4, [x14]
+00000008    -  	stxrb	w0, w0, [x0]
+9cb91f08    -  	stlxrb	wzr, w28, [x12]
+c03f0bc8    -  	stxr	w11, x0, [x30]
+794111c8    -  	stxr	w17, x25, [x11]
