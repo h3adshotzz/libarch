@@ -435,8 +435,56 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_load_store_ordered (instruction_t **instr)
 {
+    unsigned size = select_bits ((*instr)->opcode, 30, 31);
+    unsigned L = select_bits ((*instr)->opcode, 22, 22);
+    unsigned Rs = select_bits ((*instr)->opcode, 16, 20);
+    unsigned o0 = select_bits ((*instr)->opcode, 15, 15);
+    unsigned Rt2 = select_bits ((*instr)->opcode, 10, 14);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
 
     /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, size);
+    libarch_instruction_add_field (instr, L);
+    libarch_instruction_add_field (instr, Rs);
+    libarch_instruction_add_field (instr, o0);
+    libarch_instruction_add_field (instr, Rt2);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rt);
+
+    int opcode_table[][5] = {
+        { 0, 0, 0, 32, ARM64_INSTRUCTION_STLLRB },
+        { 0, 0, 1, 32, ARM64_INSTRUCTION_STLRB },
+
+        { 0, 1, 0,  32, ARM64_INSTRUCTION_LDLARB },
+        { 0, 1, 1,  32, ARM64_INSTRUCTION_LDARB },
+
+        { 1, 0, 0, 32, ARM64_INSTRUCTION_STLLRH },
+        { 1, 0, 1, 32, ARM64_INSTRUCTION_STLRH },
+
+        { 1, 1, 0,  32, ARM64_INSTRUCTION_LDLARH },
+        { 1, 1, 1,  32, ARM64_INSTRUCTION_LDARH },
+
+        { 2, 0, 0, 32, ARM64_INSTRUCTION_STLLR },
+        { 2, 0, 1, 32, ARM64_INSTRUCTION_STLR },
+        { 3, 0, 0, 64, ARM64_INSTRUCTION_STLLR },
+        { 3, 0, 1, 64, ARM64_INSTRUCTION_STLR },
+
+        { 2, 1, 0, 32, ARM64_INSTRUCTION_LDLAR },
+        { 2, 1, 1, 32, ARM64_INSTRUCTION_LDAR },
+        { 3, 1, 0, 64, ARM64_INSTRUCTION_LDLAR },
+        { 3, 1, 1, 64, ARM64_INSTRUCTION_LDAR },
+    };
+
+    for (int i = 0; i < sizeof (opcode_table) / sizeof (opcode_table[0]); i++) {
+        if (opcode_table[i][0] == size && opcode_table[i][1] == L && opcode_table[i][2] == o0) {
+            (*instr)->type = opcode_table[i][4];
+
+            libarch_instruction_add_operand_register (instr, Rt, opcode_table[i][3], ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+            libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+        }
+    }
+
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
