@@ -263,8 +263,52 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_load_store_memory_tags (instruction_t **instr)
 {
+    unsigned opc = select_bits ((*instr)->opcode, 22, 23);
+    unsigned imm9 = select_bits ((*instr)->opcode, 12, 20);
+    unsigned op2 = select_bits ((*instr)->opcode, 10, 11);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
 
     /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, opc);
+    libarch_instruction_add_field (instr, imm9);
+    libarch_instruction_add_field (instr, op2);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rt);
+
+    uint32_t simm = sign_extend (imm9, 9) << 4;
+
+    int opcode_table[][5] = {
+        {0, 1, 0, ARM64_INSTRUCTION_STG, 1},
+        {0, 2, 0, ARM64_INSTRUCTION_STG, 1},
+        {0, 3, 0, ARM64_INSTRUCTION_STG, 1},
+        {0, 0, 0, ARM64_INSTRUCTION_STZGM, 0},
+        {1, 0, 0, ARM64_INSTRUCTION_LDG, 1},
+        {1, 1, 0, ARM64_INSTRUCTION_STZG, 1},
+        {1, 2, 0, ARM64_INSTRUCTION_STZG, 1},
+        {1, 3, 0, ARM64_INSTRUCTION_STZG, 1},
+        {2, 1, 0, ARM64_INSTRUCTION_ST2G, 1},
+        {2, 2, 0, ARM64_INSTRUCTION_ST2G, 1},
+        {2, 3, 0, ARM64_INSTRUCTION_ST2G, 1},
+        {2, 0, 0, ARM64_INSTRUCTION_STGM, 0},
+        {3, 1, 0, ARM64_INSTRUCTION_STZ2G, 1},
+        {3, 2, 0, ARM64_INSTRUCTION_STZ2G, 1},
+        {3, 3, 0, ARM64_INSTRUCTION_STZ2G, 1},
+        {2, 0, 0, ARM64_INSTRUCTION_LDGM, 0}
+    };
+
+    for (int i = 0; i < sizeof (opcode_table) / sizeof (opcode_table[0]); i++) {
+        if (opcode_table[i][0] == opc && opcode_table[i][1] == op2 && opcode_table[i][2] == imm9) {
+            (*instr)->type = opcode_table[i][3];
+            libarch_instruction_add_operand_register (instr, Rt, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+
+            if (opcode_table[i][4] && simm)
+                libarch_instruction_add_operand_immediate (instr, *(unsigned int *) &simm, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+        }
+    }
+
+
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
