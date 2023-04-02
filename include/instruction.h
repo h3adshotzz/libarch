@@ -73,6 +73,7 @@
 
 #define ARM64_IMMEDIATE_OPERAND_OPT_NONE            0
 #define ARM64_IMMEDIATE_OPERAND_OPT_PREFER_DECIMAL  2
+#define ARM64_IMMEDIATE_OPERAND_OPT_PRE_INDEXED     0xf0000000
 
 
 /**
@@ -122,6 +123,7 @@ typedef struct operand_t
     uint32_t            imm_opts;
     char                imm_prefix;
     char                imm_suffix;
+    char                imm_extra;
 
     /* op_type == ARM64_OPERAND_TYPE_TARGET */
     char               *target;
@@ -243,6 +245,19 @@ libarch_instruction_add_operand_immediate_with_fix (instruction_t **instr,
                                                     uint8_t type, 
                                                     char prefix, 
                                                     char suffix);
+
+
+/**
+ * 
+ * 
+ */
+LIBARCH_API
+libarch_return_t
+libarch_instruction_add_operand_immediate_with_fix_extra (instruction_t **instr, 
+                                                          uint64_t bits, 
+                                                          uint8_t type, 
+                                                          char prefix, 
+                                                          char suffix);                                                    
 
 
 /**

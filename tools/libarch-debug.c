@@ -173,6 +173,7 @@ void create_string (instruction_t *instr)
             }
 
             if (op->imm_suffix) printf ("%c", op->imm_suffix);
+            if (op->imm_extra) printf ("%c", op->imm_extra);
             
             goto check_comma;
         }

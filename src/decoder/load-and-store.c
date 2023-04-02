@@ -623,7 +623,40 @@ decode_load_store_register_pair (instruction_t **instr)
         { 1, 0, 0, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDP },
         { 1, 0, 1, 0, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STP },
         { 1, 0, 1, 1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDP },
-        
+        { 1, 1, 1, 0, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STP },
+        { 1, 1, 1, 1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDP },
+        { 1, 2, 1, 0, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STP },
+        { 1, 2, 1, 1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDP },
+        { 1, 1, 0, 1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDPSW },
+
+        /* Load/Store register pair (offset) */
+        { 2, 0, 0, 0, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STP },
+        { 2, 0, 0, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDP },
+        { 2, 0, 1, 0, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STP },
+        { 2, 0, 1, 1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDP },
+        { 2, 1, 0, 0, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STP },
+        { 2, 1, 0, 1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDP },
+        { 2, 1, 1, 0, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STP },
+        { 2, 1, 1, 1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDP },
+        { 2, 2, 1, 0, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STP },
+        { 2, 2, 1, 1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDP },
+        { 2, 1, 0, 1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDPSW },
+
+        /* Load/Store register pair (pre-indexed) */
+        { 3, 0, 0, 0, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STP },
+        { 3, 0, 0, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDP },
+        { 3, 0, 1, 0, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STP },
+        { 3, 0, 1, 1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDP },
+
+        { 3, 2, 0, 0, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STP },
+        { 3, 2, 0, 1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDP },
+        { 3, 1, 1, 0, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STP },
+        { 3, 1, 1, 1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDP },
+
+        { 3, 2, 1, 0, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STP },
+        { 3, 2, 1, 1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDP },
+        { 3, 1, 0, 1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDPSW },
+
     };
     int opc_len = sizeof (opcode_table) / sizeof (opcode*);
 
@@ -631,16 +664,36 @@ decode_load_store_register_pair (instruction_t **instr)
         if (opcode_table[i].select == select && opcode_table[i].opc == opc && opcode_table[i].V == V && opcode_table[i].L == L) {
             (*instr)->type = opcode_table[i].type;
 
-            libarch_instruction_add_operand_register (instr, Rt, opcode_table[i].width, opcode_table[i].simd_fp, ARM64_REGISTER_OPERAND_OPT_NONE);
-            libarch_instruction_add_operand_register (instr, Rt2, opcode_table[i].width, opcode_table[i].simd_fp, ARM64_REGISTER_OPERAND_OPT_NONE);
-            libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', (imm7 >= 1) ? NULL : ']');
+            /* Common register operands */
+            libarch_instruction_add_operand_register (instr, Rt, opcode_table[i].width, opcode_table[i].simd_fp, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+            libarch_instruction_add_operand_register (instr, Rt2, opcode_table[i].width, opcode_table[i].simd_fp, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
 
-            if (imm7) {
-                unsigned scale = (opcode_table[i].V == 0) ? 2 + (opc >> 1) : 2 + opc;
-                unsigned int imm = sign_extend (imm7, 7) << scale;
-                libarch_instruction_add_operand_immediate_with_fix (instr, *(int *) &imm, ARM64_IMMEDIATE_TYPE_INT, NULL, ']');
-                break;
+            /* Fixup immediate value */
+            unsigned int scale, imm;
+            scale = (opcode_table[i].V == 0) ? 2 + (opc >> 1) : 2 + opc;
+            imm = sign_extend (imm7, 7) << scale;
+
+            /* Load/Store no-allocated pair (offset) */
+            if (opcode_table[i].select == 0 || opcode_table[i].select == 2) {
+                libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', (imm7 >= 1) ? NULL : ']');
+
+                if (imm7) {
+                    libarch_instruction_add_operand_immediate_with_fix (instr, *(int *) &imm, ARM64_IMMEDIATE_TYPE_INT, NULL, ']');
+                    break;
+                }
+
+            /* Load/Store register pair (post-indexed) */
+            } else if (opcode_table[i].select == 1) {
+                libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', ']');
+                libarch_instruction_add_operand_immediate (instr, *(int *) &imm, ARM64_IMMEDIATE_TYPE_INT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+            
+            /* Load/Store register pair (pre-indexed) */
+            } else if (opcode_table[i].select == 3) {
+                libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', NULL);
+                libarch_instruction_add_operand_immediate_with_fix_extra (instr, *(int *) &imm, ARM64_IMMEDIATE_TYPE_INT, NULL, ']');
             }
+
+            
         }
     }
 
