@@ -12,6 +12,8 @@
         "unordered_map": "c",
         "vector": "c",
         "load-and-store.h": "c",
-        "register.h": "c"
+        "register.h": "c",
+        "__functional_03": "c",
+        "functional": "c"
     }
 }

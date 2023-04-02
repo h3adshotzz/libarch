@@ -1,0 +1,43 @@
+7820840c    -  	st1.8b	{ v24, v25, v26, v27 }, [x3], x4
+7920000c    -  	st1.8b	{ v25, v26, v27, v28 }, [x3]
+1e208c4c    -  	st1.16b	{ v30, v31, v0, v1 }, [x0], x12     segfault
+bea0984c    -  	st1.16b	{ v30, v31 }, [x5], x24
+7562004c    -  	st1.16b	{ v21, v22, v23 }, [x19]
+e1a7840c    -  	st1.4h	{ v1, v2 }, [sp], x4
+00279f0c    -  	st1.4h	{ v0, v1, v2, v3 }, [x24], #32
+6d65004c    -  	st1.8h	{ v13, v14, v15 }, [x11]
+5827824c    -  	st1.8h	{ v24, v25, v26, v27 }, [x26], x2
+6e74004c    -  	st1.8h	{ v14 }, [x3]
+14a99f4c    -  	st1.4s	{ v20, v21 }, [x8], #32
+
+780a004d    -  	st1.b	{ v24 }[10], [x19]
+00069b0d    -  	st1.b	{ v0 }[1], [x16], x27
+2e20004d    -  	st3.b	{ v14, v15, v16 }[8], [x1]
+3132004d    -  	st3.b	{ v17, v18, v19 }[12], [x17]
+6572004d    -  	st3.h	{ v5, v6, v7 }[6], [x19]
+
+83033ec8    -  	stxp	w30, x3, x0, [x28]
+e47e3988    -  	stxp	w25, w4, wzr, [x23]
+86743ac8    -  	stxp	w26, x6, x29, [x4]
+0a4063c8    -  	ldxp	x10, x16, [x0]
+c4691e08    -  	stxrb	w30, w4, [x14]
+00000008    -  	stxrb	w0, w0, [x0]
+9cb91f08    -  	stlxrb	wzr, w28, [x12]
+c03f0bc8    -  	stxr	w11, x0, [x30]
+794111c8    -  	stxr	w17, x25, [x11]
+
+b6e3fed8    -  	prfm	#22, 0xfffffff00720ad98
+e1000ad8    -  	prfm	pldl1strm, 0xfffffff0072348c0
+302e2fd8    -  	prfm	pstl1keep, 0xfffffff00728de0c
+c96a18d8    -  	prfm	plil1strm, 0xfffffff00734a4da
+b6e3f3d8    -  	prfm	#22, 0xfffffff0071f4d30
+3d2a5c5c    -  	ldr	    d29, 0xfffffff0078a7b2c
+02028518    -  	ldr	    w2, 0xfffffff007611e9c
+25303458    -  	ldr	    x5, 0xfffffff00776298d
+
+09fd9f08    -  	stlrb	w9, [x8]
+a8d6da08    -  	ldarb	w8, [x21]
+09fd9fc8    -  	stlr	x9, [x8]
+1ffc9fc8    -  	stlr	xzr, z[x0]
+09fd9f88    -  	stlr	w9, [x8]
+0afddfc8    -  	ldar	x10, [x8]

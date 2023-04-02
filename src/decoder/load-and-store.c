@@ -230,7 +230,6 @@ decode_advanced_simd_load_store_single_structure (instruction_t **instr)
         reg_count = ((elem * 2) - 1);
         (*instr)->type = (ARM64_INSTRUCTION_LD1 - 1) + reg_count;
     }
-    printf ("reg: %d\n", reg_count);
 
     /* Set the register operands */
     if (reg_count == 1) {
@@ -493,8 +492,85 @@ LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_load_register_literal (instruction_t **instr)
 {
+    unsigned opc = select_bits ((*instr)->opcode, 30, 31);
+    unsigned V = select_bits ((*instr)->opcode, 26, 26);
+    unsigned imm19 = select_bits ((*instr)->opcode, 5, 23);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
 
     /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, opc);
+    libarch_instruction_add_field (instr, V);
+    libarch_instruction_add_field (instr, imm19);
+    libarch_instruction_add_field (instr, Rt);
+
+    /* Extend the pc-relative immediate value */
+    long label = (signed) sign_extend (imm19 << 2, 64) + (*instr)->addr;
+
+    /* The PRFM (literal) instruction is handled differently to the others */
+    if (opc == 3 && V == 0) {
+        (*instr)->type = ARM64_INSTRUCTION_PRFM;
+
+        unsigned type = select_bits (Rt, 3, 4);
+        unsigned target = select_bits (Rt, 2, 1);
+        unsigned policy = select_bits (Rt, 0, 0);
+
+        /* Determine prefetch operation */
+        int prefetch_op_table[][4] = {
+            { 0, 0, 0, ARM64_PRFOP_PLDL1KEEP },
+            { 0, 1, 0, ARM64_PRFOP_PLDL2KEEP },
+            { 0, 2, 0, ARM64_PRFOP_PLDL3KEEP },
+            { 0, 0, 1, ARM64_PRFOP_PLDL1STRM },
+            { 0, 1, 1, ARM64_PRFOP_PLDL2STRM },
+            { 0, 2, 1, ARM64_PRFOP_PLDL3STRM },
+            { 1, 0, 0, ARM64_PRFOP_PLIL1KEEP },
+            { 1, 1, 0, ARM64_PRFOP_PLIL2KEEP },
+            { 1, 2, 0, ARM64_PRFOP_PLIL3KEEP },
+            { 1, 0, 1, ARM64_PRFOP_PLIL1STRM },
+            { 1, 1, 1, ARM64_PRFOP_PLIL2STRM },
+            { 1, 2, 1, ARM64_PRFOP_PLIL3STRM },
+            { 2, 0, 0, ARM64_PRFOP_PSTL1KEEP },
+            { 2, 1, 0, ARM64_PRFOP_PSTL2KEEP },
+            { 2, 2, 0, ARM64_PRFOP_PSTL3KEEP },
+            { 2, 0, 1, ARM64_PRFOP_PSTL1STRM },
+            { 2, 1, 1, ARM64_PRFOP_PSTL2STRM },
+            { 2, 2, 1, ARM64_PRFOP_PSTL3STRM },
+        };
+
+        int prfop = -1;
+        for (int i = 0; i < sizeof (prefetch_op_table) / sizeof (prefetch_op_table[0]); i++) {
+            if (prefetch_op_table[i][0] == type && prefetch_op_table[i][1] == target && prefetch_op_table[i][2] == policy)
+                prfop = prefetch_op_table[i][3];
+        }
+
+        /* If there was a prefetch op, add it as an extra operand */
+        if (prfop >= 0) libarch_instruction_add_operand_extra (instr, ARM64_OPERAND_TYPE_PRFOP, prfop);
+        else libarch_instruction_add_operand_immediate (instr, *(long *) &Rt, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+
+        libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+
+        return LIBARCH_DECODE_STATUS_SUCCESS;
+    }
+
+    int opcode_table[][5] = {
+        { 0, 0, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDR },
+        { 0, 1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+        { 1, 0, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDR },
+        { 1, 1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        { 2, 0, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSW },
+        { 2, 1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+    };
+
+    for (int i = 0; i < sizeof (opcode_table) / sizeof (opcode_table[0]); i++) {
+        if (opcode_table[i][0] == opc && opcode_table[i][1] == V) {
+            (*instr)->type = opcode_table[i][4];
+
+            /* Add operands */
+            libarch_instruction_add_operand_register (instr, Rt, opcode_table[i][2], opcode_table[i][3], ARM64_REGISTER_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+        }
+    }
+
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
@@ -509,27 +585,39 @@ disass_load_and_store_instruction (instruction_t *instr)
     unsigned op2 = select_bits (instr->opcode, 23, 24);
     unsigned op3 = select_bits (instr->opcode, 16, 21);
     unsigned op4 = select_bits (instr->opcode, 10, 11);
-    printf ("load and store\n");
+    //printf ("load and store: op0: %d, op1: %d, op2: %d, op3: %d, op4: %d\n",
+    //    op0, op1, op2, op3, op4);
 
-    if (op0 == 0 && op1 == 0 && op2 == 0 && (op3 >> 5) == 1) {
-        if (decode_compare_and_swap_pair (&instr))
-            instr->subgroup = ARM64_DECODE_SUBGROUP_COMPARE_AND_SWAP_PAIR;
+    /**
+     *  Load and Store Multiple structures
+     *  Load and Store Single structures
+     *  Load and Store Memory Tags
+     *  Load and Store Exclusive
+     *  LDAPR STLR
+     *  Load and Store Literal
+     *  Load and store Register Pair
+     *  
+     *  Load and Store Register
+     *      Atomic memory
+     *      Load and Store Register Offset 
+     *      Load and Store PAC
+     * 
+     *  Load and Store Register
+     */
 
-    } else if (((op0 == 4 || op0 == 0) && op1 == 1 && op2 == 0 && op3 == 0) ||
-               ((op0 == 4 || op0 == 0) && op1 == 1 && op2 == 1 && (op3 >> 5) == 0)) {
+    if ((op0 & ~4) == 0 && op1 == 1 && (op2 == 0 || op2 == 1) && (op3 & ~0x1f) == 0) {
         if (decode_advanced_simd_load_store_multiple_structures (&instr))
             instr->subgroup = ARM64_DECODE_SUBGROUP_ADVANCED_SIMD_LOAD_STORE_MULT_STRUCT;
 
-    } else if (((op0 == 4 || op0 == 0) && op1 == 1 && op2 == 2 && (op3 == 0 || (op3 >> 5) == 1)) ||
-               ((op0 == 4 || op0 == 0) && op1 == 1 == op2 == 3)) {
+    } else if ((op0 & ~4) == 0 && op1 == 1 && (op2 == 2 || op2 == 3)) {
         if (decode_advanced_simd_load_store_single_structure (&instr))
             instr->subgroup = ARM64_DECODE_SUBGROUP_ADVANCED_SIMD_LOAD_STORE_SINGLE_STRUCT;
 
-    } else if (op0 == 13 && op1 == 0 && (op2 == 2 || op2 == 3) && (op3 >> 5) == 1) {
+    } else if (op0 == 13 && op1 == 0 && (op2 >> 1) == 1 && (op3 >> 5) == 1) {
         if (decode_load_store_memory_tags (&instr))
             instr->subgroup = ARM64_DECODE_SUBGROUP_LOAD_STORE_MEMORY_TAGS;
 
-    } else if (((op0 >> 2) >= 0 || (op0 >> 2) <= 3) && op1 == 0 && op2 == 1 && (op3 >> 5) == 0) {
+    } else if ((op0 & ~12) == 0 && op1 == 0 && op2 == 1 && (op3 >> 5) == 0) {
         if (decode_load_store_ordered (&instr))
             instr->subgroup = ARM64_DECODE_SUBGROUP_LOAD_STORE_ORDERED;
 
@@ -541,17 +629,10 @@ disass_load_and_store_instruction (instruction_t *instr)
             if (decode_load_store_exclusive_register (&instr))
                 instr->subgroup = ARM64_DECODE_SUBGROUP_LOAD_STORE_EXCL_REGISTER;
         }
-    } else if (((op0 >> 2) >= 1 && (op0 >> 2) <= 3) && (op2 == 0 || op2 == 1)) {
+
+    } else if ((op0 & ~12) == 1 && (op2 >> 1) == 0) {
         if (decode_load_register_literal (&instr))
             instr->subgroup = ARM64_DECODE_SUBGROUP_LOAD_REGISTER_LITERAL;
-
-    } else if (((op0 >> 2) >= 0 || (op0 >> 2) <= 3) && op1 == 0 && op2 == 1 && (op3 >> 5) == 1) {
-        printf ("Compare and swap\n");
-        // Not Implemented Yet
-
-    } else if (((op0 >> 2) >= 1 || (op0 >> 2) <= 3) && op1 == 0 && (op2 == 2 || op2 == 3) && (op3 >> 5) == 0 && op4 == 0) {
-        printf ("LDAPR/STLR (Unscaled immediate)\n");
-        // Not Implemented Yet
 
     } else {
         printf ("not implemented\n");

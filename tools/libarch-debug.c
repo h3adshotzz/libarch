@@ -115,16 +115,26 @@ void create_string (instruction_t *instr)
         if (op->op_type == ARM64_OPERAND_TYPE_REGISTER) {
             char *reg;
 
-            if (op->reg_type == ARM64_REGISTER_TYPE_GENERAL) {
-                reg = libarch_get_general_register (op->reg,
-                    (op->reg_size == 64) ? A64_REGISTERS_GP_64 : A64_REGISTERS_GP_32,
-                    (op->reg_size == 64) ? A64_REGISTERS_GP_64_LEN : A64_REGISTERS_GP_32_LEN);
-            } else if (op->reg_type == ARM64_REGISTER_TYPE_SYSTEM) {
-                reg = libarch_get_system_register (op->reg);
-            } else if (op->reg_type == ARM64_REGISTER_TYPE_FLOATING_POINT) {
-                if (op->reg_size == 128) reg = libarch_get_general_register (op->reg, A64_REGISTERS_FP_128, A64_REGISTERS_FP_128_LEN); 
-            } // ... other types
+            const char **regs;
+            size_t size;
 
+            if (op->reg_type == ARM64_REGISTER_TYPE_SYSTEM) {
+                reg = libarch_get_system_register (op->reg);
+            } else {
+                if (op->reg_type == ARM64_REGISTER_TYPE_GENERAL) {
+                    regs = (op->reg_size == 64) ? A64_REGISTERS_GP_64 : A64_REGISTERS_GP_32;
+                    size = (op->reg_size == 64) ? A64_REGISTERS_GP_64_LEN : A64_REGISTERS_GP_32_LEN;
+
+                    reg = libarch_get_general_register (op->reg, regs, size);
+                } else if (op->reg_type == ARM64_REGISTER_TYPE_FLOATING_POINT) {
+                    regs = A64_REGISTERS_FP_128;
+                    size = A64_REGISTERS_FP_128_LEN;
+
+                    reg = libarch_get_general_register (op->reg, regs, size);
+                } else {
+                    reg = "unk";
+                }
+            }
 
             // Print the register
             if (op->reg_prefix && !op->reg_suffix)
@@ -220,7 +230,6 @@ check_comma:
 
 void disassemble (uint32_t *data, uint32_t len, uint64_t base, int dbg)
 {
-    printf ("base: 0x%llx\n", base);
     for (int i = 0; i < len; i++) {
         //if (data[i] == NULL) continue;
         instruction_t *in = libarch_instruction_create (data[i], base);
@@ -230,8 +239,9 @@ void disassemble (uint32_t *data, uint32_t len, uint64_t base, int dbg)
         if (dbg) {
             instruction_debug (in, 1);
             create_string (in);
+        } else {
+            create_string (in);
         }
-        else printf ("0x%016llx  %08x\t%s\n", in->addr, in->opcode, in->parsed);
 
         base += 4;
     }
@@ -244,13 +254,17 @@ void disassemble (uint32_t *data, uint32_t len, uint64_t base, int dbg)
 
 int main (int argc, char *argv[])
 {
-    printf (BLUE "\n    LIBARCH Version %s: %s; root:%s/%s_%s %s\n\n" RESET,
-            LIBARCH_BUILD_VERSION, __TIMESTAMP__, LIBARCH_SOURCE_VERSION, LIBARCH_BUILD_TYPE, BUILD_ARCH_CAP, BUILD_ARCH);
-
     if (argc == 2) {
         uint32_t input = SWAP_INT(strtol(argv[1], NULL, 16));
         uint32_t *opcode[] = { input, NULL };
-        disassemble (opcode, 1, 0, 1);
+        disassemble (opcode, 1, 0, 0);
+    } else if (argc == 3) {
+        printf (BLUE "\n    LIBARCH Version %s: %s; root:%s/%s_%s %s\n\n" RESET,
+            LIBARCH_BUILD_VERSION, __TIMESTAMP__, LIBARCH_SOURCE_VERSION, LIBARCH_BUILD_TYPE, BUILD_ARCH_CAP, BUILD_ARCH);
+
+        uint32_t input = SWAP_INT(strtol(argv[1], NULL, 16));
+        uint32_t *opcode[] = { input, NULL };
+        disassemble (opcode, 1, 0, atoi(argv[2]));
     } else {
         printf ("disassembling %s\n", argv[1]);
 
@@ -275,21 +289,7 @@ int main (int argc, char *argv[])
             printf ("0x%016llx  %08x\t", in->addr, SWAP_INT(in->opcode));
             create_string (in);
             base += 4;
-
-            /*//ins_data[i] = *(uint32_t *) data;
-            instruction_t *in = libarch_instruction_create (*(uint32_t *) data, base);
-            libarch_disass (&in);
-
-            //printf ("0x%016llx  %08x\t%s\n", in->addr, in->opcode, in->parsed);
-            printf ("0x%016llx  %08x\t", in->addr, in->opcode);
-            create_string (in);
-
-            data += sizeof (uint32_t);
-            base += 4;*/
         }
-
-        //uint64_t base = 0; //0x0000000100002d04;
-        //disassemble (ins_data, atoi(argv[2]), base, atoi(argv[3]));
     }
 
 

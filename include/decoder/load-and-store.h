@@ -24,6 +24,7 @@
 
 #include "arm64/arm64-vector-specifiers.h"
 #include "arm64/arm64-instructions.h"
+#include "arm64/arm64-prefetch-ops.h"
 #include "arm64/arm64-translation.h"
 #include "arm64/arm64-conditions.h"
 #include "arm64/arm64-registers.h"

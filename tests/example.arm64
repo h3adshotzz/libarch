@@ -147,6 +147,39 @@ c03f0bc8    -  	stxr	w11, x0, [x30]
 09fd9f08    -  	stlrb	w9, [x8]
 a8d6da08    -  	ldarb	w8, [x21]
 09fd9fc8    -  	stlr	x9, [x8]
-1ffc9fc8    -  	stlr	xzr, [x0]
+1ffc9fc8    -  	stlr	xzr, z[x0]
 09fd9f88    -  	stlr	w9, [x8]
 0afddfc8    -  	ldar	x10, [x8]
+
+b6e3fed8    -  	prfm	#22, 0xfffffff00720ad98
+e1000ad8    -  	prfm	pldl1strm, 0xfffffff0072348c0 <__const+0x22d4a0>
+302e2fd8    -  	prfm	pstl1keep, 0xfffffff00728de0c
+c96a18d8    -  	prfm	plil1strm, 0xfffffff00734a4da
+b6e3f3d8    -  	prfm	#22, 0xfffffff0071f4d30
+
+
+3d2a5c5c    -  	ldr	    d29, 0xfffffff0078a7b2c
+02028518    -  	ldr	    w2, 0xfffffff007611e9c          stllrb  w2, [x16]
+25303458    -  	ldr	    x5, 0xfffffff00776298d
+
+
+
+ldr	    w2, 0xfffffff007611e9c
+    load and store: op0: 1, op1: 0, op2: 1, op3: 5, op4: 0
+
+ldr	    x5, 0xfffffff00776298d
+    load and store: op0: 5, op1: 0, op2: 0, op3: 52, op4: 0
+
+(op0 >> 2) >= 1 
+(op0 >> 2) <= 3
+op1 == 1
+(op2 == 0 || op2 == 1)
+
+
+xx01    -   0x  -   -       Load Register Immediate
+
+1101 - 13
+0001 - 1
+
+
+((op0 >= 1 && op0 <= 13) && (op2 == 0 || op2 == 1))

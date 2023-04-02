@@ -68,9 +68,9 @@ enum {
  */
 static const char *A64_PRFOP_STR[] =
 {
-    "pldlel1keep", "pldlel2keep", "pldlel3keep", "pldlel1strm", "pldlel2strm", "pldlel3strm",
-    "plilel1keep", "plilel2keep", "plilel3keep", "plilel1strm", "plilel2strm", "plilel3strm",
-    "pstlel1keep", "pstlel2keep", "pstlel3keep", "pstlel1strm", "pstlel2strm", "pstlel3strm", 
+    "pldl1keep", "pldl2keep", "pldl3keep", "pldl1strm", "pldl2strm", "pldl3strm",
+    "plil1keep", "plil2keep", "plil3keep", "plil1strm", "plil2strm", "plil3strm",
+    "pstl1keep", "pstl2keep", "pstl3keep", "pstl1strm", "pstl2strm", "pstl3strm", 
 };
 
 /**
