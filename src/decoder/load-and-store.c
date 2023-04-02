@@ -574,6 +574,79 @@ decode_load_register_literal (instruction_t **instr)
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
+LIBARCH_PRIVATE LIBARCH_API
+decode_status_t
+decode_load_store_register_pair (instruction_t **instr)
+{
+    unsigned opc = select_bits ((*instr)->opcode, 30, 31);
+    unsigned V = select_bits ((*instr)->opcode, 26, 26);
+    unsigned L = select_bits ((*instr)->opcode, 22, 22);
+    unsigned imm7 = select_bits ((*instr)->opcode, 15, 21);
+    unsigned Rt2 = select_bits ((*instr)->opcode, 10, 14);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    unsigned select = select_bits ((*instr)->opcode, 23, 25);
+
+    // tmp
+    libarch_instruction_add_field (instr, select);
+
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, opc);
+    libarch_instruction_add_field (instr, V);
+    libarch_instruction_add_field (instr, L);
+    libarch_instruction_add_field (instr, imm7);
+    libarch_instruction_add_field (instr, Rt2);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rt);
+
+    typedef struct {
+        unsigned select, opc, V, L;
+        int width;
+        int simd_fp;
+        arm64_instr_t type;
+    } opcode;
+
+    opcode opcode_table[] = {
+        /* Load/Store no-allocate pair (offset) */
+        { 0, 0, 0, 0, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STNP },
+        { 0, 0, 0, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDNP },
+        { 0, 0, 1, 0, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STNP },
+        { 0, 0, 1, 1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDNP },
+        { 0, 1, 1, 0, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STNP },
+        { 0, 1, 1, 1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDNP },
+        { 0, 2, 0, 0, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STNP },
+        { 0, 2, 0, 1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDNP },
+
+        /* Load/Store register pair (post-indexed) */
+        { 1, 0, 0, 0, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STP },
+        { 1, 0, 0, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDP },
+        { 1, 0, 1, 0, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STP },
+        { 1, 0, 1, 1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDP },
+        
+    };
+    int opc_len = sizeof (opcode_table) / sizeof (opcode*);
+
+    for (int i = 0; i < opc_len; i++) {
+        if (opcode_table[i].select == select && opcode_table[i].opc == opc && opcode_table[i].V == V && opcode_table[i].L == L) {
+            (*instr)->type = opcode_table[i].type;
+
+            libarch_instruction_add_operand_register (instr, Rt, opcode_table[i].width, opcode_table[i].simd_fp, ARM64_REGISTER_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_register (instr, Rt2, opcode_table[i].width, opcode_table[i].simd_fp, ARM64_REGISTER_OPERAND_OPT_NONE);
+            libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', (imm7 >= 1) ? NULL : ']');
+
+            if (imm7) {
+                unsigned scale = (opcode_table[i].V == 0) ? 2 + (opc >> 1) : 2 + opc;
+                unsigned int imm = sign_extend (imm7, 7) << scale;
+                libarch_instruction_add_operand_immediate_with_fix (instr, *(int *) &imm, ARM64_IMMEDIATE_TYPE_INT, NULL, ']');
+                break;
+            }
+        }
+    }
+
+    return LIBARCH_DECODE_STATUS_SUCCESS;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 LIBARCH_API
@@ -634,7 +707,17 @@ disass_load_and_store_instruction (instruction_t *instr)
         if (decode_load_register_literal (&instr))
             instr->subgroup = ARM64_DECODE_SUBGROUP_LOAD_REGISTER_LITERAL;
 
+    } else if ((op0 & ~12) == 2) {
+        if (decode_load_store_register_pair (&instr))
+            instr->subgroup = ARM64_DECODE_SUBGROUP_LOAD_REGISTER_PAIR;
+
     } else {
+        /**
+         *  The following instruction subgroups have not been implemented:
+         *  - Compare and Swap
+         *  - LDAPR/STLR (Unscaled Immediate)
+         *  - Memory Copy and Memory Set
+         */
         printf ("not implemented\n");
     }
 

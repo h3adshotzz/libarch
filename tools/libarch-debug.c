@@ -65,10 +65,12 @@ void instruction_debug (instruction_t *instr, int show_fields)
             printf ("\t[%d]: reg:           %d\n", i, op->reg);
             printf ("\t[%d]: reg_size:      %d\n", i, op->reg_size);
             printf ("\t[%d]: reg_type:      %d\n", i, op->reg_type);
+            printf ("\t[%d]: pre/sufix:     %c/%c\n", i, op->reg_prefix, op->reg_suffix);
         } else if (op->op_type == ARM64_OPERAND_TYPE_IMMEDIATE) {
             printf ("IMMEDIATE (%d)\n", op->op_type);
             printf ("\t[%d]: imm_type:      %d\n", i, op->imm_type);
             printf ("\t[%d]: imm_bits:      %d\n", i, op->imm_bits);
+            printf ("\t[%d]: pre/sufix:     %c/%c\n", i, op->imm_prefix, op->imm_suffix);
         } else if (op->op_type == ARM64_OPERAND_TYPE_SHIFT) {
             printf ("SHIFT (%d)\n", op->op_type);
             printf ("\t[%d]: shift_type:    %d\n", i, op->shift_type);
@@ -170,7 +172,7 @@ void create_string (instruction_t *instr)
                 }
             }
 
-            if (op->imm_prefix) printf ("%c", op->imm_suffix);
+            if (op->imm_suffix) printf ("%c", op->imm_suffix);
             
             goto check_comma;
         }

@@ -57,6 +57,7 @@
 #define ARM64_DECODE_SUBGROUP_LOAD_STORE_EXCL_PAIR                      6
 #define ARM64_DECODE_SUBGROUP_LOAD_STORE_EXCL_REGISTER                  7
 #define ARM64_DECODE_SUBGROUP_LOAD_REGISTER_LITERAL                     8
+#define ARM64_DECODE_SUBGROUP_LOAD_REGISTER_PAIR                        9
 
 /**
  *  NOTE:   This header contains definitions of arm64 instructions. The actual
