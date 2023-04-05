@@ -16,6 +16,8 @@
 #ifndef __LIBARCH_ARM64_REGISTERS_H__
 #define __LIBARCH_ARM64_REGISTERS_H__
 
+#include <stdint.h>
+
 /**
  *  NOTE:   This header contains definitions of general-purpose and system registers
  *          for the AArch64/arm64 architecture. Register definitions can be found in

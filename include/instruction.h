@@ -17,6 +17,7 @@
 #define __LIBARCH_INSTRUCTION_H__
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "libarch.h"

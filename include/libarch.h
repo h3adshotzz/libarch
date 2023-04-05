@@ -17,6 +17,7 @@
 #define __LIBARCH_LIBARCH_H__
 
 #include <stdlib.h>
+#include "libarch-version.h"
 
 /* General definitions to make the code nicer to read */
 #define LIBARCH_API

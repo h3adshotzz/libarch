@@ -381,16 +381,3 @@ static int _concat_internal(char **dst, const char *src, va_list args){
 
     return w;
 }
-
-int 
-mstrappend (char **dst, const char *src, ...)
-{
-    va_list args;
-    va_start(args, src);
-
-    int w = _concat_internal(dst, src, args);
-
-    va_end(args);
-
-    return w;
-}

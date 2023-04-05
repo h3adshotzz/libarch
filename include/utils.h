@@ -79,7 +79,7 @@ sign_extend (unsigned int bits, int numbits);
 void
 base10 (unsigned int hex_value, int width);
 
-int 
-mstrappend (char **dst, const char *src, ...);
+//int 
+//mstrappend (char **dst, const char *src, ...);
 
 #endif /* __libarch_utils_h__ */
