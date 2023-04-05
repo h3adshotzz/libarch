@@ -19,6 +19,7 @@
 #include "decoder/branch.h"
 #include "decoder/load-and-store.h"
 #include "decoder/data-processing.h"
+#include "decoder/data-processing-register.h"
 
 /**
  *  \brief  Allocate / Reallocated memory in the operands array for a new element.
@@ -307,7 +308,8 @@ libarch_disass (instruction_t **instr)
         
     } else if ((op1 & ~8) == 5) {
         // Data Processing - Register
-        (*instr)->group = ARM64_DECODE_GROUP_DATA_PROCESS_REGISTER;
+        if (disass_data_processing_register_instruction (*instr) == LIBARCH_DECODE_STATUS_SUCCESS)
+            (*instr)->group = ARM64_DECODE_GROUP_DATA_PROCESS_REGISTER;
     } else if ((op1 & ~8) == 7) {
         // Data Processing - Floating
         (*instr)->group = ARM64_DECODE_GROUP_DATA_PROCESS_FLOATING;

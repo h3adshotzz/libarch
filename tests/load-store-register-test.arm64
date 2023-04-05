@@ -1,5 +1,38 @@
 
 
+75702028  	-   stnp    w21, w28, [x3, #-256]
+2028256c  	-   stnp    d0, d10, [x1, #-432]
+2573206c  	-   stnp    d5, d28, [x25, #-512]
+d38832ac  	-   stnp    q19, q2, [x6, #-432]
+6dc631a8  	-   stnp    x13, x17, [x19, #-232]
+4b661aa8  	-   stnp    x11, x25, [x18, #416]
+
+756e646c  	-   ldnp    d21, d27, [x19, #-448]
+6461626c  	-   ldnp    d4, d24, [x11, #-480]
+2e20416c  	-   ldnp    d14, d8, [x1, #16]
+
+5ffd81a8  	-   stp	    xzr, xzr, [x10], #24
+3f218128  	-   stp	    wzr, w8, [x9], #8
+fd7b03a9  	-   stp     x29, x30, [sp, #48]
+f657bda9  	-   stp     x22, x21, [sp, #-48]!
+
+e82700a9  	-   stp	    x8, x9, [sp]
+
+48531f38    -  	sturb	w8, [x26, #-11]
+bf031538    -  	sturb	wzr, [x29, #-176]
+ab135138    -  	ldurb	w11, [x29, #-239]
+bf031978    -  	sturh	wzr, [x29, #-112]
+
+15815ff8    -  	ldur	x21, [x8, #-8]
+e083843c    -  	stur	q0, [sp, #72]
+aac311b8    -  	stur	w10, [x29, #-228]
+bf8316f8    -  	stur	xzr, [x29, #-152]
+
+b6e386b8    -  	ldursw	x22, [x29, #110]
+181190f8    -  	prfum	#24, [x8, #-255]
+936290f8    -  	prfum	pstl2strm, [x20, #-250]
+c10191f8    -  	prfum	pldl1strm, [x14, #-240]
+
 aac311b8    -  	stur	w10, [x29, #-228]
 bf8316f8    -  	stur	xzr, [x29, #-152]
 

@@ -15,6 +15,7 @@
         "register.h": "c",
         "__functional_03": "c",
         "functional": "c",
-        "arm64-index-extend.h": "c"
+        "arm64-index-extend.h": "c",
+        "data-processing-register.h": "c"
     }
 }
