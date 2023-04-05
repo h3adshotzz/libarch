@@ -273,13 +273,49 @@ decode_add_subtract_shifted_register (instruction_t **instr)
 
     for (int i = 0; i < table_size; i++) {
         if (opcode_table[i].sf == sf && opcode_table[i].op == op && opcode_table[i].S == S) {
-            (*instr)->type = opcode_table[i].type;
             int shift_table[] = { ARM64_SHIFT_TYPE_LSL, ARM64_SHIFT_TYPE_LSR, ARM64_SHIFT_TYPE_ASR, ARM64_SHIFT_TYPE_ROR };
 
-            libarch_instruction_add_operand_register (instr, Rd, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
-            libarch_instruction_add_operand_register (instr, Rn, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
-            libarch_instruction_add_operand_register (instr, Rm, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
-            libarch_instruction_add_operand_shift (instr, *(unsigned int *) &imm6, shift_table[shift]);
+            /* Check for the CMN alias */
+            if (opcode_table[i].type == ARM64_INSTRUCTION_ADDS && Rd == 0x1f) {
+                (*instr)->type = ARM64_INSTRUCTION_CMN;
+
+                libarch_instruction_add_operand_register (instr, Rn, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_register (instr, Rm, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_shift (instr, *(unsigned int *) &imm6, shift_table[shift]);
+
+            /* Check for the NEG alias */
+            } else if (opcode_table[i].type == ARM64_INSTRUCTION_SUB && Rn == 0x1f) {
+                (*instr)->type = ARM64_INSTRUCTION_NEG;
+
+                libarch_instruction_add_operand_register (instr, Rd, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_register (instr, Rm, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_shift (instr, *(unsigned int *) &imm6, shift_table[shift]);
+        
+            /* Check for the CMP alias */
+            } else if (opcode_table[i].type == ARM64_INSTRUCTION_SUBS && Rd == 0x1f) {
+                (*instr)->type = ARM64_INSTRUCTION_CMP;
+
+                libarch_instruction_add_operand_register (instr, Rn, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_register (instr, Rm, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_shift (instr, *(unsigned int *) &imm6, shift_table[shift]);
+
+            /* Check for the NEGS alias */
+            } else if (opcode_table[i].type == ARM64_INSTRUCTION_SUBS && Rn == 0x1f && Rd != 0x1f) {
+                (*instr)->type = ARM64_INSTRUCTION_NEGS;
+
+                libarch_instruction_add_operand_register (instr, Rd, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_register (instr, Rm, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_shift (instr, *(unsigned int *) &imm6, shift_table[shift]);
+
+            /* Regular instructions */
+            } else {
+                (*instr)->type = opcode_table[i].type;
+
+                libarch_instruction_add_operand_register (instr, Rd, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_register (instr, Rn, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_register (instr, Rm, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_shift (instr, *(unsigned int *) &imm6, shift_table[shift]);
+            }
 
             break;
         }
