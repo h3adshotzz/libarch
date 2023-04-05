@@ -235,6 +235,59 @@ decode_logical_shift_register (instruction_t **instr)
 }
 
 
+LIBARCH_PRIVATE LIBARCH_API
+decode_status_t
+decode_add_subtract_shifted_register (instruction_t **instr)
+{
+    unsigned sf = select_bits ((*instr)->opcode, 31, 31);
+    unsigned op = select_bits ((*instr)->opcode, 30, 30);
+    unsigned S = select_bits ((*instr)->opcode, 29, 29);
+    unsigned shift = select_bits ((*instr)->opcode, 22, 23);
+    unsigned Rm = select_bits ((*instr)->opcode, 16, 20);
+    unsigned imm6 = select_bits ((*instr)->opcode, 10, 15);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rd = select_bits ((*instr)->opcode, 0, 4);
+
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, sf);
+    libarch_instruction_add_field (instr, op);
+    libarch_instruction_add_field (instr, S);
+    libarch_instruction_add_field (instr, shift);
+    libarch_instruction_add_field (instr, Rm);
+    libarch_instruction_add_field (instr, imm6);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rd);
+
+    typedef struct { unsigned sf, op, S; int width; arm64_instr_t type; } opcode;
+    opcode opcode_table[] = {
+        { 0, 0, 0, 32, ARM64_INSTRUCTION_ADD },
+        { 0, 0, 1, 32, ARM64_INSTRUCTION_ADDS },
+        { 0, 1, 0, 32, ARM64_INSTRUCTION_SUB },
+        { 0, 1, 1, 32, ARM64_INSTRUCTION_SUBS },
+        { 1, 0, 0, 64, ARM64_INSTRUCTION_ADD },
+        { 1, 0, 1, 64, ARM64_INSTRUCTION_ADDS },
+        { 1, 1, 0, 64, ARM64_INSTRUCTION_SUB },
+        { 1, 1, 1, 64, ARM64_INSTRUCTION_SUBS },
+    };
+    int table_size = sizeof (opcode_table) / sizeof (opcode);
+
+    for (int i = 0; i < table_size; i++) {
+        if (opcode_table[i].sf == sf && opcode_table[i].op == op && opcode_table[i].S == S) {
+            (*instr)->type = opcode_table[i].type;
+            int shift_table[] = { ARM64_SHIFT_TYPE_LSL, ARM64_SHIFT_TYPE_LSR, ARM64_SHIFT_TYPE_ASR, ARM64_SHIFT_TYPE_ROR };
+
+            libarch_instruction_add_operand_register (instr, Rd, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+            libarch_instruction_add_operand_register (instr, Rn, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+            libarch_instruction_add_operand_register (instr, Rm, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+            libarch_instruction_add_operand_shift (instr, *(unsigned int *) &imm6, shift_table[shift]);
+
+            break;
+        }
+    }
+    return LIBARCH_DECODE_STATUS_SUCCESS;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 
 LIBARCH_API
@@ -257,6 +310,10 @@ disass_data_processing_register_instruction (instruction_t *instr)
     } else if (op1 == 0 && (op2 >> 3) == 0) {
         decode_logical_shift_register (&instr);
         printf ("logical (shifted register)\n");
+
+    } else if (op1 == 0 && ((op2 & ~6) == 8 || (op2 & ~6) == 9)) {
+        decode_add_subtract_shifted_register (&instr);
+        printf ("add subtract (shifted register)\n");
     }
 
     printf ("data processing register\n");
