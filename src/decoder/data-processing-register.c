@@ -71,6 +71,80 @@ decode_data_processing_2_source (instruction_t **instr)
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
+
+LIBARCH_PRIVATE LIBARCH_API
+decode_status_t
+decode_data_processing_1_source (instruction_t **instr)
+{
+    unsigned sf = select_bits ((*instr)->opcode, 31, 31);
+    unsigned S = select_bits ((*instr)->opcode, 29, 29);
+    unsigned op2 = select_bits ((*instr)->opcode, 16, 20);
+    unsigned Z = select_bits ((*instr)->opcode, 13, 13);
+    unsigned op = select_bits ((*instr)->opcode, 10, 15);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rd = select_bits ((*instr)->opcode, 0, 4);
+
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, sf);
+    libarch_instruction_add_field (instr, S);
+    libarch_instruction_add_field (instr, op2);
+    libarch_instruction_add_field (instr, Z);
+    libarch_instruction_add_field (instr, op);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rd);
+
+    typedef struct opcode { unsigned sf, S, op2, op; arm64_instr_t type; } opcode;
+    opcode opcode_table[] = {
+        { 0, 0, 0, 0, ARM64_INSTRUCTION_RBIT },
+        { 0, 0, 0, 1, ARM64_INSTRUCTION_REV16 },
+        { 0, 0, 0, 2, ARM64_INSTRUCTION_REV },
+        { 0, 0, 0, 4, ARM64_INSTRUCTION_CLZ },
+        { 0, 0, 0, 5, ARM64_INSTRUCTION_CLS },
+
+        { 1, 0, 0, 0, ARM64_INSTRUCTION_RBIT },
+        { 1, 0, 0, 1, ARM64_INSTRUCTION_REV16 },
+        { 1, 0, 0, 2, ARM64_INSTRUCTION_REV32 },
+        { 1, 0, 0, 3, ARM64_INSTRUCTION_REV32 },
+        { 1, 0, 0, 4, ARM64_INSTRUCTION_CLZ },
+        { 1, 0, 0, 5, ARM64_INSTRUCTION_CLS },
+
+        { 1, 0, 1, 0, ARM64_INSTRUCTION_PACIA },
+        { 1, 0, 1, 1, ARM64_INSTRUCTION_PACIB },
+        { 1, 0, 1, 2, ARM64_INSTRUCTION_PACDA },
+        { 1, 0, 1, 3, ARM64_INSTRUCTION_PACDB },
+
+        { 1, 0, 1, 4, ARM64_INSTRUCTION_AUTIA },
+        { 1, 0, 1, 5, ARM64_INSTRUCTION_AUTIB },
+        { 1, 0, 1, 6, ARM64_INSTRUCTION_AUTDA },
+        { 1, 0, 1, 7, ARM64_INSTRUCTION_AUTDB },
+
+        /* leave these out for now */
+        // PACIZA, PACIZB, PACDZA, PACDZB, AUTIZA, AUTIZB, AUTDZA, AUTDZB, XPACI, XPACD
+
+    };
+    int table_size = sizeof (opcode_table) / sizeof (opcode);
+
+    for (int i = 0; i < table_size; i++) {
+        if (opcode_table[i].sf == sf && opcode_table[i].S == S && opcode_table[i].op2 == op2 && opcode_table[i].op == op) {
+            (*instr)->type = opcode_table[i].type;
+
+            libarch_instruction_add_operand_register (instr, Rn, (sf == 1) ? 64 : 32, opcode_table[i].type, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+
+            if (opcode_table[i].type == ARM64_INSTRUCTION_PACIA) {
+                if (Z == 1 && Rn == 0x1f) {
+                    (*instr)->type = ARM64_INSTRUCTION_PACIZA;
+                } else{
+                    libarch_instruction_add_operand_register (instr, Rn, (sf == 1) ? 64 : 32, opcode_table[i].type, ARM64_REGISTER_OPERAND_OPT_NONE);
+                }
+            } else {
+                libarch_instruction_add_operand_register (instr, Rn, (sf == 1) ? 64 : 32, opcode_table[i].type, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+            }
+            break;
+        }
+    }
+    return LIBARCH_DECODE_STATUS_SUCCESS;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 LIBARCH_API
