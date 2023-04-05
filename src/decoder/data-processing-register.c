@@ -145,6 +145,96 @@ decode_data_processing_1_source (instruction_t **instr)
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }
 
+
+LIBARCH_PRIVATE LIBARCH_API
+decode_status_t
+decode_logical_shift_register (instruction_t **instr)
+{
+    unsigned sf = select_bits ((*instr)->opcode, 31, 31);
+    unsigned opc = select_bits ((*instr)->opcode, 29, 30);
+    unsigned shift = select_bits ((*instr)->opcode, 22, 23);
+    unsigned N = select_bits ((*instr)->opcode, 21, 21);
+    unsigned Rm = select_bits ((*instr)->opcode, 16, 20);
+    unsigned imm6 = select_bits ((*instr)->opcode, 10, 15);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rd = select_bits ((*instr)->opcode, 0, 4);
+
+    /* Add fields in left-right order */    
+    libarch_instruction_add_field (instr, sf);
+    libarch_instruction_add_field (instr, opc);
+    libarch_instruction_add_field (instr, shift);
+    libarch_instruction_add_field (instr, N);
+    libarch_instruction_add_field (instr, Rm);
+    libarch_instruction_add_field (instr, imm6);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rd);
+
+    typedef struct { unsigned sf, opc, N; int width; arm64_instr_t type } opcode;
+    opcode opcode_table[] = {
+        { 0, 0, 0, 32, ARM64_INSTRUCTION_AND },
+        { 0, 0, 1, 32, ARM64_INSTRUCTION_BIC },
+        { 0, 1, 0, 32, ARM64_INSTRUCTION_ORR },
+        { 0, 1, 1, 32, ARM64_INSTRUCTION_ORN },
+        { 0, 2, 0, 32, ARM64_INSTRUCTION_EOR },
+        { 0, 2, 1, 32, ARM64_INSTRUCTION_EON },
+        { 0, 3, 0, 32, ARM64_INSTRUCTION_ANDS },
+        { 0, 3, 1, 32, ARM64_INSTRUCTION_BICS },
+
+        { 1, 0, 0, 64, ARM64_INSTRUCTION_AND },
+        { 1, 0, 1, 64, ARM64_INSTRUCTION_BIC },
+        { 1, 1, 0, 64, ARM64_INSTRUCTION_ORR },
+        { 1, 1, 1, 64, ARM64_INSTRUCTION_ORN },
+        { 1, 2, 0, 64, ARM64_INSTRUCTION_EOR },
+        { 1, 2, 1, 64, ARM64_INSTRUCTION_EON },
+        { 1, 3, 0, 64, ARM64_INSTRUCTION_ANDS },
+        { 1, 3, 1, 64, ARM64_INSTRUCTION_BICS },
+    };
+    int table_size = sizeof (opcode_table) / sizeof (opcode);
+
+    for (int i = 0; i < table_size; i++) {
+        if (opcode_table[i].sf == sf && opcode_table[i].opc == opc && opcode_table[i].N == N) {
+            int shift_table[] = { ARM64_SHIFT_TYPE_LSL, ARM64_SHIFT_TYPE_LSR, ARM64_SHIFT_TYPE_ASR, ARM64_SHIFT_TYPE_ROR };
+
+            /* Check for the MOV alias */
+            if ((shift == 0 && imm6 == 0 && Rn == 0x1f) && opcode_table[i].type == ARM64_INSTRUCTION_ORR) {
+                (*instr)->type = ARM64_INSTRUCTION_MOV;
+
+                libarch_instruction_add_operand_register (instr, Rd, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_register (instr, Rm, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+
+            /* Check for the MVN alias */
+            } else if (Rn == 0x1f && opcode_table[i].type == ARM64_INSTRUCTION_ORN) {
+                (*instr)->type = ARM64_INSTRUCTION_MVN;
+
+                libarch_instruction_add_operand_register (instr, Rd, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_register (instr, Rm, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_shift (instr, *(unsigned int *) &imm6, shift_table[shift]);
+
+            /* Check for the TST alias */
+            } else if (Rd == 0x1f && opcode_table[i].type == ARM64_INSTRUCTION_ANDS) {
+                (*instr)->type = ARM64_INSTRUCTION_TST;
+
+                libarch_instruction_add_operand_register (instr, Rn, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_register (instr, Rm, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_shift (instr, *(unsigned int *) &imm6, shift_table[shift]);
+
+            /* The rest of the opcode_table instructions */
+            } else {
+                (*instr)->type = opcode_table[i].type;
+
+                libarch_instruction_add_operand_register (instr, Rd, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_register (instr, Rn, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_register (instr, Rm, (sf == 1) ? 64 : 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                libarch_instruction_add_operand_shift (instr, *(unsigned int *) &imm6, shift_table[shift]);
+            }
+            break;
+        }
+    }
+
+    return LIBARCH_DECODE_STATUS_SUCCESS;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 
 LIBARCH_API
@@ -161,9 +251,11 @@ disass_data_processing_register_instruction (instruction_t *instr)
         printf ("data processing 2 source\n");
 
     } else if (op0 == 1 && op1 == 1 && op2 == 6) {
+        decode_data_processing_1_source (&instr);
         printf ("data processing 1 source\n");
 
     } else if (op1 == 0 && (op2 >> 3) == 0) {
+        decode_logical_shift_register (&instr);
         printf ("logical (shifted register)\n");
     }
 
