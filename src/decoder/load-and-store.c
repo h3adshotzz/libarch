@@ -15,6 +15,44 @@
 
 #include "decoder/load-and-store.h"
 
+/** NOTE: Move to utils.c */
+LIBARCH_PRIVATE
+int
+get_prefetch_operation (unsigned Rt)
+{
+    unsigned type = select_bits (Rt, 3, 4);
+    unsigned target = select_bits (Rt, 1, 2);
+    unsigned policy = select_bits (Rt, 0, 0);
+
+    /* Determine prefetch operation */
+    int prefetch_op_table[][4] = {
+        { 0, 0, 0, ARM64_PRFOP_PLDL1KEEP },
+        { 0, 1, 0, ARM64_PRFOP_PLDL2KEEP },
+        { 0, 2, 0, ARM64_PRFOP_PLDL3KEEP },
+        { 0, 0, 1, ARM64_PRFOP_PLDL1STRM },
+        { 0, 1, 1, ARM64_PRFOP_PLDL2STRM },
+        { 0, 2, 1, ARM64_PRFOP_PLDL3STRM },
+        { 1, 0, 0, ARM64_PRFOP_PLIL1KEEP },
+        { 1, 1, 0, ARM64_PRFOP_PLIL2KEEP },
+        { 1, 2, 0, ARM64_PRFOP_PLIL3KEEP },
+        { 1, 0, 1, ARM64_PRFOP_PLIL1STRM },
+        { 1, 1, 1, ARM64_PRFOP_PLIL2STRM },
+        { 1, 2, 1, ARM64_PRFOP_PLIL3STRM },
+        { 2, 0, 0, ARM64_PRFOP_PSTL1KEEP },
+        { 2, 1, 0, ARM64_PRFOP_PSTL2KEEP },
+        { 2, 2, 0, ARM64_PRFOP_PSTL3KEEP },
+        { 2, 0, 1, ARM64_PRFOP_PSTL1STRM },
+        { 2, 1, 1, ARM64_PRFOP_PSTL2STRM },
+        { 2, 2, 1, ARM64_PRFOP_PSTL3STRM },
+    };
+
+    for (int i = 0; i < sizeof (prefetch_op_table) / sizeof (prefetch_op_table[0]); i++) {
+        if (prefetch_op_table[i][0] == type && prefetch_op_table[i][1] == target && prefetch_op_table[i][2] == policy)
+            return prefetch_op_table[i][3];
+    }
+    return -1;
+}
+
 LIBARCH_PRIVATE LIBARCH_API
 decode_status_t
 decode_compare_and_swap_pair (instruction_t **instr)
@@ -510,37 +548,7 @@ decode_load_register_literal (instruction_t **instr)
     if (opc == 3 && V == 0) {
         (*instr)->type = ARM64_INSTRUCTION_PRFM;
 
-        unsigned type = select_bits (Rt, 3, 4);
-        unsigned target = select_bits (Rt, 2, 1);
-        unsigned policy = select_bits (Rt, 0, 0);
-
-        /* Determine prefetch operation */
-        int prefetch_op_table[][4] = {
-            { 0, 0, 0, ARM64_PRFOP_PLDL1KEEP },
-            { 0, 1, 0, ARM64_PRFOP_PLDL2KEEP },
-            { 0, 2, 0, ARM64_PRFOP_PLDL3KEEP },
-            { 0, 0, 1, ARM64_PRFOP_PLDL1STRM },
-            { 0, 1, 1, ARM64_PRFOP_PLDL2STRM },
-            { 0, 2, 1, ARM64_PRFOP_PLDL3STRM },
-            { 1, 0, 0, ARM64_PRFOP_PLIL1KEEP },
-            { 1, 1, 0, ARM64_PRFOP_PLIL2KEEP },
-            { 1, 2, 0, ARM64_PRFOP_PLIL3KEEP },
-            { 1, 0, 1, ARM64_PRFOP_PLIL1STRM },
-            { 1, 1, 1, ARM64_PRFOP_PLIL2STRM },
-            { 1, 2, 1, ARM64_PRFOP_PLIL3STRM },
-            { 2, 0, 0, ARM64_PRFOP_PSTL1KEEP },
-            { 2, 1, 0, ARM64_PRFOP_PSTL2KEEP },
-            { 2, 2, 0, ARM64_PRFOP_PSTL3KEEP },
-            { 2, 0, 1, ARM64_PRFOP_PSTL1STRM },
-            { 2, 1, 1, ARM64_PRFOP_PSTL2STRM },
-            { 2, 2, 1, ARM64_PRFOP_PSTL3STRM },
-        };
-
-        int prfop = -1;
-        for (int i = 0; i < sizeof (prefetch_op_table) / sizeof (prefetch_op_table[0]); i++) {
-            if (prefetch_op_table[i][0] == type && prefetch_op_table[i][1] == target && prefetch_op_table[i][2] == policy)
-                prfop = prefetch_op_table[i][3];
-        }
+        int prfop = get_prefetch_operation (Rt);
 
         /* If there was a prefetch op, add it as an extra operand */
         if (prfop >= 0) libarch_instruction_add_operand_extra (instr, ARM64_OPERAND_TYPE_PRFOP, prfop);
@@ -587,9 +595,6 @@ decode_load_store_register_pair (instruction_t **instr)
     unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
 
     unsigned select = select_bits ((*instr)->opcode, 23, 25);
-
-    // tmp
-    libarch_instruction_add_field (instr, select);
 
     /* Add fields in left-right order */
     libarch_instruction_add_field (instr, opc);
@@ -677,10 +682,8 @@ decode_load_store_register_pair (instruction_t **instr)
             if (opcode_table[i].select == 0 || opcode_table[i].select == 2) {
                 libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', (imm7 >= 1) ? NULL : ']');
 
-                if (imm7) {
+                if (imm7)
                     libarch_instruction_add_operand_immediate_with_fix (instr, *(int *) &imm, ARM64_IMMEDIATE_TYPE_INT, NULL, ']');
-                    break;
-                }
 
             /* Load/Store register pair (post-indexed) */
             } else if (opcode_table[i].select == 1) {
@@ -693,11 +696,390 @@ decode_load_store_register_pair (instruction_t **instr)
                 libarch_instruction_add_operand_immediate_with_fix_extra (instr, *(int *) &imm, ARM64_IMMEDIATE_TYPE_INT, NULL, ']');
             }
 
-            
+            break;
         }
     }
 
     return LIBARCH_DECODE_STATUS_SUCCESS;
+}
+
+LIBARCH_PRIVATE LIBARCH_API
+decode_status_t
+decode_load_store_register (instruction_t **instr, int uimm_opt)
+{
+    /* Decode subgroup options */
+    unsigned op2 = select_bits ((*instr)->opcode, 23, 24) >> 1;
+    unsigned op3 = select_bits ((*instr)->opcode, 16, 21) >> 5;
+    unsigned op4 = select_bits ((*instr)->opcode, 10, 11);
+
+    /* Instruction fields */
+    unsigned size = select_bits ((*instr)->opcode, 30, 31);
+    unsigned V = select_bits ((*instr)->opcode, 26, 26);
+    unsigned opc = select_bits ((*instr)->opcode, 22, 23);
+    unsigned imm9 = select_bits ((*instr)->opcode, 12, 20);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, size);
+    libarch_instruction_add_field (instr, V);
+    libarch_instruction_add_field (instr, opc);
+    libarch_instruction_add_field (instr, imm9);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rt);
+
+    typedef struct {
+        unsigned op2, op3, op4;
+        unsigned size, V, opc;
+        int opt, width;
+        int simd_fp; 
+        arm64_instr_t type;
+    } opcode;
+
+    opcode opcode_table[] = {
+        /* Load/Store register (Unscaled immediate) */
+        { 0, 0, 0, 0, 0, 0, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STURB },
+        { 0, 0, 0, 0, 0, 1, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDURB },
+
+        { 0, 0, 0, 0, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDURSB },
+        { 0, 0, 0, 0, 0, 3, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDURSB },
+
+        { 0, 0, 0, 0, 1, 0, -1, 8, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STUR },
+        { 0, 0, 0, 0, 1, 1, -1, 8, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDUR },
+        { 0, 0, 0, 0, 1, 2, -1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STUR },
+        { 0, 0, 0, 0, 1, 3, -1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDUR },
+
+        { 0, 0, 0, 1, 0, 0, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STURH },
+        { 0, 0, 0, 1, 0, 1, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDURH },
+
+        { 0, 0, 0, 1, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDURSH },
+        { 0, 0, 0, 1, 0, 3, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDURSH },
+
+        { 0, 0, 0, 1, 1, 0, -1, 16, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STUR },
+        { 0, 0, 0, 1, 1, 1, -1, 16, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDUR },
+
+        { 0, 0, 0, 2, 0, 0, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STUR },
+        { 0, 0, 0, 2, 0, 1, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDUR },
+
+        { 0, 0, 0, 2, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDURSW },
+        { 0, 0, 0, 3, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_PRFUM },
+
+        { 0, 0, 0, 2, 1, 0, -1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STUR },
+        { 0, 0, 0, 2, 1, 1, -1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDUR },
+
+        { 0, 0, 0, 3, 0, 0, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STUR },
+        { 0, 0, 0, 3, 0, 1, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDUR },
+
+        { 0, 0, 0, 3, 0, 1, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_PRFUM },
+        { 0, 0, 0, 3, 1, 0, -1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STUR },
+        { 0, 0, 0, 3, 1, 1, -1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STUR },
+
+        /* Load/Store register (immediate post-indexed) */
+        { 0, 0, 1, 0, 0, 0, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STRB },
+        { 0, 0, 1, 0, 0, 1, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRB },
+        { 0, 0, 1, 0, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSB },
+        { 0, 0, 1, 0, 0, 3, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSB },
+
+        { 0, 0, 1, 0, 1, 0, -1, 8, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 1, 0, 1, 1, -1, 8, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+        { 0, 0, 1, 0, 1, 2, -1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 1, 0, 1, 3, -1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        { 0, 0, 1, 1, 0, 0, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STRH },
+        { 0, 0, 1, 1, 0, 1, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRH },
+        { 0, 0, 1, 1, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSH },
+        { 0, 0, 1, 1, 0, 3, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSH },
+
+        { 0, 0, 1, 1, 1, 0, -1, 16, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 1, 1, 1, 1, -1, 16, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        { 0, 0, 1, 2, 0, 0, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STR },
+        { 0, 0, 1, 2, 0, 1, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDR },
+        { 0, 0, 1, 2, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSW },
+        { 0, 0, 1, 2, 1, 0, -1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 1, 2, 1, 1, -1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        { 0, 0, 1, 3, 0, 0, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STR },
+        { 0, 0, 1, 3, 0, 1, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDR },
+        { 0, 0, 1, 3, 1, 0, -1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 1, 3, 1, 1, -1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        /* Load/Store register (unprivileged) */
+        { 0, 0, 2, 0, 0, 0, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STTRB },
+        { 0, 0, 2, 0, 0, 1, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDTRB },
+        { 0, 0, 2, 0, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDTRSB },
+        { 0, 0, 2, 0, 0, 3, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDTRSB },
+
+        { 0, 0, 2, 1, 0, 0, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STTRH },
+        { 0, 0, 2, 1, 0, 1, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDTRH },
+        { 0, 0, 2, 1, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDTRSH },
+        { 0, 0, 2, 1, 0, 3, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDTRSH },
+
+        { 0, 0, 2, 2, 0, 0, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STTR },
+        { 0, 0, 2, 2, 0, 1, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDTR },
+        { 0, 0, 2, 2, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDTRSW },
+
+        { 0, 0, 2, 3, 0, 0, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STTR },
+        { 0, 0, 2, 3, 0, 1, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDTR },
+
+        /* Load/Store register (immediate pre-indexed) */
+        { 0, 0, 3, 0, 0, 0, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STRB },
+        { 0, 0, 3, 0, 0, 1, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRB },
+        { 0, 0, 3, 0, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSB },
+        { 0, 0, 3, 0, 0, 3, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSB },
+
+        { 0, 0, 3, 0, 1, 0, -1, 8, ARM64_IMMEDIATE_TYPE_FLOAT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 3, 0, 1, 1, -1, 8, ARM64_IMMEDIATE_TYPE_FLOAT, ARM64_INSTRUCTION_LDR },
+        { 0, 0, 3, 0, 1, 2, -1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 3, 0, 1, 3, -1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        { 0, 0, 3, 1, 0, 0, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STRH },
+        { 0, 0, 3, 1, 0, 1, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRH },
+        { 0, 0, 3, 1, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSH },
+        { 0, 0, 3, 1, 0, 3, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSH },
+
+        { 0, 0, 3, 1, 1, 0, -1, 16, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 3, 1, 1, 1, -1, 16, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        { 0, 0, 3, 2, 0, 0, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STR },
+        { 0, 0, 3, 2, 0, 1, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDR },
+        { 0, 0, 3, 2, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSW },
+
+        { 0, 0, 3, 2, 1, 0, -1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 3, 2, 1, 1, -1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        { 0, 0, 3, 3, 0, 0, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STR },
+        { 0, 0, 3, 3, 0, 1, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDR },
+
+        { 0, 0, 3, 3, 1, 0, -1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 3, 3, 1, 1, -1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        /* Unsigned immediate */
+        { 0, 0, 0, 0, 0, 0, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STRB },
+        { 0, 0, 0, 0, 0, 1, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRB },
+        { 0, 0, 0, 0, 0, 2, 1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSB },
+        { 0, 0, 0, 0, 0, 3, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSB },
+
+        { 0, 0, 0, 0, 1, 0, 1, 8, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 0, 0, 1, 1, 1, 8, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+        { 0, 0, 0, 0, 1, 2, 1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 0, 0, 1, 3, 1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        { 0, 0, 0, 1, 0, 0, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STRH },
+        { 0, 0, 0, 1, 0, 1, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRH },
+        { 0, 0, 0, 1, 0, 2, 1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSH },
+        { 0, 0, 0, 1, 0, 3, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSH },
+
+        { 0, 0, 0, 1, 1, 0, 1, 16, ARM64_IMMEDIATE_TYPE_FLOAT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 0, 1, 1, 1, 1, 16, ARM64_IMMEDIATE_TYPE_FLOAT, ARM64_INSTRUCTION_LDR },
+
+        { 0, 0, 0, 2, 0, 0, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STR },
+        { 0, 0, 0, 2, 0, 1, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDR },
+        { 0, 0, 0, 2, 0, 2, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSW },
+
+        { 0, 0, 0, 2, 1, 0, 1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 0, 2, 1, 1, 1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        { 0, 0, 0, 3, 0, 0, 1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STR },
+        { 0, 0, 0, 3, 0, 1, 1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDR },
+        { 0, 0, 0, 3, 0, 2, 1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_PRFM },
+
+        { 0, 0, 0, 3, 1, 0, 1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 0, 0, 3, 1, 0, 1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+        
+    };
+    int table_size = sizeof (opcode_table) / sizeof (opcode);
+
+    for (int i = 0; i < table_size; i++) {
+        if (opcode_table[i].opt == uimm_opt && uimm_opt == 1 && opcode_table[i].size == size && opcode_table[i].V == V && opcode_table[i].opc == opc) {
+            (*instr)->type = opcode_table[i].type;
+
+            if (opcode_table[i].type == ARM64_INSTRUCTION_PRFM) {
+                /* Add the prefetch operation as an extra operand */
+                int prfop = get_prefetch_operation (Rt);
+                if (prfop >= 0) libarch_instruction_add_operand_extra (instr, ARM64_OPERAND_TYPE_PRFOP, prfop);
+                else libarch_instruction_add_operand_immediate (instr, *(long *) &Rt, ARM64_IMMEDIATE_TYPE_INT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+            
+            /* Add the rest of the common operands */
+            } else {
+                libarch_instruction_add_operand_register (instr, Rt, opcode_table[i].width, opcode_table[i].simd_fp, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+            }
+
+            unsigned imm12 = select_bits ((*instr)->opcode, 10, 21);
+            unsigned int pimm = sign_extend(imm12, 12) * (opcode_table[i].width / 8);
+
+            libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', NULL);
+            libarch_instruction_add_operand_immediate_with_fix (instr, *(unsigned int *) &pimm, ARM64_IMMEDIATE_TYPE_INT, NULL, ']');
+
+        } else if (opcode_table[i].op2 == op2 && opcode_table[i].op3 == op3 && opcode_table[i].op4 == op4) {
+            if (opcode_table[i].size == size && opcode_table[i].V == V && opcode_table[i].opc == opc) {
+                (*instr)->type = opcode_table[i].type;
+
+                /**
+                 *  Most of these instructions have the same operand synatx, with the exception of
+                 *  the signing and width of the imemdiate values. Makes it a bit cleaner to add
+                 *  the operands.
+                 *
+                 *  First, we'll check if `instr` is any of the types that has a different operand
+                 *  order to the rest of the instructions in the subgroup.
+                 */
+                if (opcode_table[i].type == ARM64_INSTRUCTION_PRFUM) {
+                    /* Add the prefetch operation as an extra operand */
+                    int prfop = get_prefetch_operation (Rt);
+                    if (prfop >= 0) libarch_instruction_add_operand_extra (instr, ARM64_OPERAND_TYPE_PRFOP, prfop);
+                    else libarch_instruction_add_operand_immediate (instr, *(long *) &Rt, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
+                
+                /* Add the rest of the common operands */
+                } else {
+                    libarch_instruction_add_operand_register (instr, Rt, opcode_table[i].width, opcode_table[i].simd_fp, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+                }
+                
+
+                /* Unscaled immediate / immediate post-indexed */
+                if (op2 == 0 && op3 == 0 && (op4 == 0 || op4 == 1)) {
+                    unsigned int imm = sign_extend (imm9, 9);
+
+                    libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', (imm >= 1 && op4 == 0) ? NULL : ']');
+                    libarch_instruction_add_operand_immediate_with_fix (instr, *(int *) &imm, ARM64_IMMEDIATE_TYPE_INT, NULL, (op4 == 0) ? ']' : NULL);
+
+                /* unprivileged, immediate pre-indexed */
+                } else if (op2 == 0 && op3 == 0 && (op4 == 2 || op4 == 3)) {
+                    unsigned int imm = sign_extend (imm9, 9);
+                    libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', NULL);
+
+                    if (op4 == 3) 
+                        libarch_instruction_add_operand_immediate_with_fix_extra (instr, *(int *) &imm, ARM64_IMMEDIATE_TYPE_INT, NULL, ']');
+                    else
+                        libarch_instruction_add_operand_immediate_with_fix (instr, *(int *) &imm, ARM64_IMMEDIATE_TYPE_INT, NULL, ']');
+                
+                /* Unsigned immediate */
+                } else if (op2 == 1) {
+                    
+                }
+                break;
+            }
+        }
+    }
+
+    return LIBARCH_DECODE_STATUS_SUCCESS;
+}
+
+
+LIBARCH_PRIVATE LIBARCH_API
+decode_status_t
+decode_load_store_register_reg_offset (instruction_t **instr)
+{
+    unsigned size = select_bits ((*instr)->opcode, 30, 31);
+    unsigned V = select_bits ((*instr)->opcode, 26, 26);
+    unsigned opc = select_bits ((*instr)->opcode, 22, 23);
+    unsigned Rm = select_bits ((*instr)->opcode, 16, 20);
+    unsigned option = select_bits ((*instr)->opcode, 13, 15);
+    unsigned S = select_bits ((*instr)->opcode, 12, 12);
+    unsigned Rn = select_bits ((*instr)->opcode, 5, 9);
+    unsigned Rt = select_bits ((*instr)->opcode, 0, 4);
+
+    /* Add fields in left-right order */
+    libarch_instruction_add_field (instr, size);
+    libarch_instruction_add_field (instr, V);
+    libarch_instruction_add_field (instr, opc);
+    libarch_instruction_add_field (instr, Rm);
+    libarch_instruction_add_field (instr, option);
+    libarch_instruction_add_field (instr, S);
+    libarch_instruction_add_field (instr, Rn);
+    libarch_instruction_add_field (instr, Rt);
+
+    typedef struct {
+        unsigned size, V, opc;
+        int extend, width, simd_fp;
+        arm64_instr_t type;
+    } opcode;
+
+    opcode opcode_table[] = {
+        { 0, 0, 0, 0, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STRB },
+        { 0, 0, 0, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STRB },
+        { 0, 0, 1, 0, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRB },
+        { 0, 0, 1, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRB },
+        { 0, 0, 2, 0, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSB },
+        { 0, 0, 2, 1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSB },
+        { 0, 0, 3, 0, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSB },
+        { 0, 0, 3, 1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSB },
+
+        { 0, 1, 0, 0, 8, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 1, 0, 1, 8, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 1, 1, 0, 8, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+        { 0, 1, 1, 1, 8, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+        { 0, 1, 2, -1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 0, 1, 3, -1, 128, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        { 1, 0, 0, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STRH },
+        { 1, 0, 1, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRH },
+        { 1, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSH },
+        { 1, 0, 3, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSH },
+        { 1, 1, 0, -1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 1, 1, 1, -1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        { 2, 0, 0, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STR },
+        { 2, 0, 1, -1, 32, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDR },
+        { 2, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDRSW },
+        { 2, 1, 0, -1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 2, 1, 1, -1, 32, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+        { 3, 0, 0, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_STR },
+        { 3, 0, 1, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_LDR },
+        { 3, 0, 2, -1, 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_INSTRUCTION_PRFM },
+        { 3, 1, 0 -1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_STR },
+        { 3, 1, 1 -1, 64, ARM64_REGISTER_TYPE_FLOATING_POINT, ARM64_INSTRUCTION_LDR },
+
+    };
+    int table_size = sizeof (opcode_table) / sizeof (opcode);
+
+    printf ("register_reg_offset\n");
+
+    for (int i = 0; i < table_size; i++) {
+        if (opcode_table[i].size == size && opcode_table[i].V == V && opcode_table[i].opc == opc) {
+            (*instr)->type = opcode_table[i].type;
+            int use_extend = 1;
+
+            /* Check if this instruction is an extended/shift register variant */
+            if (opcode_table[i].extend != -1) {
+                /* If `option` is set to 3, then we need to use the shift register variant */
+                if (option == 3) use_extend = 0;
+            }
+
+            libarch_instruction_add_operand_register (instr, Rt, opcode_table[i].width, opcode_table[i].simd_fp, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+            libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', NULL);
+            libarch_instruction_add_operand_register (instr, Rm, (use_extend) ? 32 : 64, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_PREFER_ZERO);
+
+            if (use_extend) {
+                libarch_instruction_add_operand_extra_with_fix (instr, ARM64_OPERAND_TYPE_INDEX_EXTEND, option, NULL, ']');
+            } else {
+                int shift_table[] = {0, 1, 2, 3, 4};
+                int shift = 0;
+
+                /**
+                 *  Perform a lookup in the shift table to determine how much the instruction is left-shifting by. 
+                 */
+                if (opcode_table[i].width >= 16 && opcode_table[i].width <= 128 && opcode_table[i].simd_fp == ARM64_REGISTER_TYPE_FLOATING_POINT)
+                    shift = shift_table[(opcode_table[i].width / 16) - 1];
+
+                libarch_instruction_add_operand_shift_with_fix (instr, shift, ARM64_SHIFT_TYPE_LSL, NULL, ']');
+            }
+
+            break;
+        }
+    }
+
+    return LIBARCH_DECODE_STATUS_SUCCESS;
+}
+
+
+LIBARCH_PRIVATE LIBARCH_API
+decode_status_t
+decode_atomic_memory_operation (instruction_t **instr)
+{
+    /* Not implemented */
+    (*instr)->type = ARM64_INSTRUCTION_UNK;
+    return LIBARCH_DECODE_STATUS_SOFT_FAIL;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -763,6 +1145,20 @@ disass_load_and_store_instruction (instruction_t *instr)
     } else if ((op0 & ~12) == 2) {
         if (decode_load_store_register_pair (&instr))
             instr->subgroup = ARM64_DECODE_SUBGROUP_LOAD_REGISTER_PAIR;
+
+    } else if ((op0 & ~12) == 3) {
+        /* Unsigned Immediate */
+        decode_status_t res;
+        if (op2 >> 1 == 1)
+            res = decode_load_store_register (&instr, 1);
+        else if ((op2 >> 1) == 0 && (op3 >> 5) == 1 && op4 == 2) 
+            res = decode_load_store_register_reg_offset (&instr);
+        else if ((op2 >> 1) == 0 && (op3 >> 5) == 1 && op4 == 0)
+            res = decode_atomic_memory_operation (&instr);
+        else
+            res = decode_load_store_register (&instr, -1);
+
+        instr->subgroup = res;
 
     } else {
         /**

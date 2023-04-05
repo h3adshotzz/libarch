@@ -14,6 +14,7 @@
         "load-and-store.h": "c",
         "register.h": "c",
         "__functional_03": "c",
-        "functional": "c"
+        "functional": "c",
+        "arm64-index-extend.h": "c"
     }
 }

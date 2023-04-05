@@ -39,6 +39,7 @@
 #include "arm64/arm64-tlbi-ops.h"
 #include "arm64/arm64-translation.h"
 #include "arm64/arm64-vector-specifiers.h"
+#include "arm64/arm64-index-extend.h"
 
 #include <instruction.h>
 #include <register.h>
@@ -65,12 +66,10 @@ void instruction_debug (instruction_t *instr, int show_fields)
             printf ("\t[%d]: reg:           %d\n", i, op->reg);
             printf ("\t[%d]: reg_size:      %d\n", i, op->reg_size);
             printf ("\t[%d]: reg_type:      %d\n", i, op->reg_type);
-            printf ("\t[%d]: pre/sufix:     %c/%c\n", i, op->reg_prefix, op->reg_suffix);
         } else if (op->op_type == ARM64_OPERAND_TYPE_IMMEDIATE) {
             printf ("IMMEDIATE (%d)\n", op->op_type);
             printf ("\t[%d]: imm_type:      %d\n", i, op->imm_type);
             printf ("\t[%d]: imm_bits:      %d\n", i, op->imm_bits);
-            printf ("\t[%d]: pre/sufix:     %c/%c\n", i, op->imm_prefix, op->imm_suffix);
         } else if (op->op_type == ARM64_OPERAND_TYPE_SHIFT) {
             printf ("SHIFT (%d)\n", op->op_type);
             printf ("\t[%d]: shift_type:    %d\n", i, op->shift_type);
@@ -87,7 +86,11 @@ void instruction_debug (instruction_t *instr, int show_fields)
         } else if (op->op_type == ARM64_OPERAND_TYPE_TLBI_OP) {
             printf ("TLBI (%d)\n", op->op_type);
             printf ("\t[%d]: pstate:        %d\n", i, op->extra);
+        } else if (op->op_type == ARM64_OPERAND_TYPE_INDEX_EXTEND) {
+            printf ("INDEX EXTEND (%d)\n", op->op_type);
+            printf ("\t[%d]: extend:        %d\n", i, op->extra);
         }
+        printf ("\t[%d]: pre/suffix:    %c, %c, %c\n", i, op->prefix, op->suffix, op->suffix_extra);
     }
 
     if (show_fields) {
@@ -139,12 +142,12 @@ void create_string (instruction_t *instr)
             }
 
             // Print the register
-            if (op->reg_prefix && !op->reg_suffix)
-                printf ("%c%s", op->reg_prefix, reg);
-            else if (!op->reg_prefix && op->reg_suffix)
-                printf ("%s%c", reg, op->reg_suffix);
-            else if (op->reg_prefix && op->reg_suffix)
-                printf ("%c%s%c", op->reg_prefix, reg, op->reg_suffix);
+            if (op->prefix && !op->suffix)
+                printf ("%c%s", op->prefix, reg);
+            else if (!op->prefix && op->suffix)
+                printf ("%s%c", reg, op->suffix);
+            else if (op->prefix && op->suffix)
+                printf ("%c%s%c", op->prefix, reg, op->suffix);
             else
                 printf ("%s", reg);
 
@@ -153,7 +156,7 @@ void create_string (instruction_t *instr)
 
         /* Immediate */
         if (op->op_type == ARM64_OPERAND_TYPE_IMMEDIATE) {
-            if (op->imm_prefix) printf ("%c", op->imm_prefix);
+            if (op->prefix) printf ("%c", op->prefix);
 
             if (op->imm_type == ARM64_IMMEDIATE_TYPE_SYSC)
                 printf ("c%d", op->imm_bits);
@@ -172,8 +175,8 @@ void create_string (instruction_t *instr)
                 }
             }
 
-            if (op->imm_suffix) printf ("%c", op->imm_suffix);
-            if (op->imm_extra) printf ("%c", op->imm_extra);
+            if (op->suffix) printf ("%c", op->suffix);
+            if (op->suffix_extra) printf ("%c", op->suffix_extra);
             
             goto check_comma;
         }
@@ -190,7 +193,9 @@ void create_string (instruction_t *instr)
             else if (op->shift_type == ARM64_SHIFT_TYPE_MSL) shift = "msl";
             else continue;
 
+            if (op->prefix) printf ("%c", op->prefix);
             printf ("%s #%d", shift, op->shift);
+            if (op->suffix) printf ("%c", op->suffix);
             goto check_comma;
         }
 
@@ -223,6 +228,14 @@ void create_string (instruction_t *instr)
         /* Memory Barrier */
         if (op->op_type == ARM64_OPERAND_TYPE_MEMORY_BARRIER) {
             printf ("%s", A64_MEM_BARRIER_CONDITIONS_STR[op->extra]);
+        }
+
+        /* Index Extend */
+        if (op->op_type == ARM64_OPERAND_TYPE_INDEX_EXTEND) {
+            if (op->prefix) printf ("%c", op->prefix);
+            printf ("%s", A64_INDEX_EXTEND_STR[op->extra]);
+            if (op->suffix) printf ("%c", op->suffix);
+            if (op->extra_val) printf (" %d", op->extra_val);
         }
 
 check_comma:

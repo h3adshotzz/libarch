@@ -87,11 +87,11 @@ libarch_instruction_add_operand_immediate_with_fix_extra (instruction_t **instr,
     (*instr)->operands[(*instr)->operands_len - 1].imm_bits = bits;
     (*instr)->operands[(*instr)->operands_len - 1].imm_type = type;
     (*instr)->operands[(*instr)->operands_len - 1].imm_opts |= ARM64_IMMEDIATE_OPERAND_OPT_PREFER_DECIMAL;
-    (*instr)->operands[(*instr)->operands_len - 1].imm_extra = '!';
 
     /* Immediate prefix/suffix, e.g. [12] has a prefix '[' and suffix ']' */
-    (*instr)->operands[(*instr)->operands_len - 1].imm_prefix = prefix;
-    (*instr)->operands[(*instr)->operands_len - 1].imm_suffix = suffix;
+    (*instr)->operands[(*instr)->operands_len - 1].prefix = prefix;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix = suffix;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix_extra = '!';
 
     return LIBARCH_RETURN_SUCCESS;
 }
@@ -109,8 +109,8 @@ libarch_instruction_add_operand_immediate_with_fix (instruction_t **instr, uint6
     (*instr)->operands[(*instr)->operands_len - 1].imm_opts = ARM64_IMMEDIATE_OPERAND_OPT_PREFER_DECIMAL;
 
     /* Immediate prefix/suffix, e.g. [12] has a prefix '[' and suffix ']' */
-    (*instr)->operands[(*instr)->operands_len - 1].imm_prefix = prefix;
-    (*instr)->operands[(*instr)->operands_len - 1].imm_suffix = suffix;
+    (*instr)->operands[(*instr)->operands_len - 1].prefix = prefix;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix = suffix;
 
     return LIBARCH_RETURN_SUCCESS;
 }
@@ -126,6 +126,25 @@ libarch_instruction_add_operand_shift (instruction_t **instr, uint32_t shift, ui
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_SHIFT;
     (*instr)->operands[(*instr)->operands_len - 1].shift = shift;
     (*instr)->operands[(*instr)->operands_len - 1].shift_type = type;
+
+    return LIBARCH_RETURN_SUCCESS;
+}
+
+
+LIBARCH_API
+libarch_return_t
+libarch_instruction_add_operand_shift_with_fix (instruction_t **instr, uint32_t shift, uint8_t type, char prefix, char suffix)
+{
+    _libarch_instruction_realloc_operand (instr);
+
+    /* Add the new operand */
+    (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_SHIFT;
+    (*instr)->operands[(*instr)->operands_len - 1].shift = shift;
+    (*instr)->operands[(*instr)->operands_len - 1].shift_type = type;
+
+    /* Shift prefix/suffix, e.g. [lsl #2] has a prefix '[' and suffix ']' */
+    (*instr)->operands[(*instr)->operands_len - 1].prefix = prefix;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix = suffix;
 
     return LIBARCH_RETURN_SUCCESS;
 }
@@ -170,8 +189,8 @@ libarch_instruction_add_operand_register_with_fix (instruction_t **instr, arm64_
     (*instr)->operands[(*instr)->operands_len - 1].reg_type = type;
 
     /* Register prefix/suffix, e.g. [x12] has a prefix '[' and suffix ']' */
-    (*instr)->operands[(*instr)->operands_len - 1].reg_prefix = prefix;
-    (*instr)->operands[(*instr)->operands_len - 1].reg_suffix = suffix;
+    (*instr)->operands[(*instr)->operands_len - 1].prefix = prefix;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix = suffix;
 
     return LIBARCH_RETURN_SUCCESS;
 }
@@ -200,6 +219,24 @@ libarch_instruction_add_operand_extra (instruction_t **instr, int type, int val)
     /* Add the new operand */
     (*instr)->operands[(*instr)->operands_len - 1].op_type = type;
     (*instr)->operands[(*instr)->operands_len - 1].extra = val;
+
+    return LIBARCH_RETURN_SUCCESS;
+}
+
+
+LIBARCH_API
+libarch_return_t
+libarch_instruction_add_operand_extra_with_fix (instruction_t **instr, int type, int val, char prefix, char suffix)
+{
+    _libarch_instruction_realloc_operand (instr);
+
+    /* Add the new operand */
+    (*instr)->operands[(*instr)->operands_len - 1].op_type = type;
+    (*instr)->operands[(*instr)->operands_len - 1].extra = val;
+
+    /* Extra prefix/suffix, e.g. [x12] has a prefix '[' and suffix ']' */
+    (*instr)->operands[(*instr)->operands_len - 1].prefix = prefix;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix = suffix;
 
     return LIBARCH_RETURN_SUCCESS;
 }

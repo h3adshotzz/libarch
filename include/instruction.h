@@ -66,6 +66,7 @@
 #define ARM64_OPERAND_TYPE_TLBI_OP              23
 #define ARM64_OPERAND_TYPE_PRFOP                24
 #define ARM64_OPERAND_TYPE_MEMORY_BARRIER       25
+#define ARM64_OPERAND_TYPE_INDEX_EXTEND         26
 
 /* Operand Options */
 #define ARM64_REGISTER_OPERAND_OPT_NONE             0
@@ -110,8 +111,6 @@ typedef struct operand_t
     arm64_reg_t         reg;
     uint8_t             reg_size;
     uint8_t             reg_type;
-    char                reg_prefix;
-    char                reg_suffix;
 
     /* op_type == ARM64_OPERAND_TYPE_SHIFT */
     uint32_t            shift;
@@ -121,9 +120,6 @@ typedef struct operand_t
     uint64_t            imm_bits; 
     uint8_t             imm_type;
     uint32_t            imm_opts;
-    char                imm_prefix;
-    char                imm_suffix;
-    char                imm_extra;
 
     /* op_type == ARM64_OPERAND_TYPE_TARGET */
     char               *target;
@@ -134,6 +130,12 @@ typedef struct operand_t
      *  op_type == ARM64_OPERAND_TYPE_TLBI_OP
     */
     int                 extra;
+    int                 extra_val;
+
+    /* Prefix and Suffix */
+    char                prefix;
+    char                suffix;
+    char                suffix_extra;
 
 } operand_t;
 
@@ -273,6 +275,18 @@ libarch_instruction_add_operand_shift (instruction_t **instr,
 
 /**
  * 
+ */
+LIBARCH_API
+libarch_return_t
+libarch_instruction_add_operand_shift_with_fix (instruction_t **instr, 
+                                                uint32_t shift, 
+                                                uint8_t type, 
+                                                char prefix, 
+                                                char suffix);
+
+
+/**
+ * 
  * 
  */
 LIBARCH_EXPORT LIBARCH_API
@@ -304,7 +318,8 @@ libarch_instruction_add_operand_register_with_fix (instruction_t **instr,
  */
 LIBARCH_EXPORT LIBARCH_API
 libarch_return_t
-libarch_instruction_add_operand_target (instruction_t **instr, char *target);
+libarch_instruction_add_operand_target (instruction_t **instr, 
+                                        char *target);
 
 
 /**
@@ -313,7 +328,22 @@ libarch_instruction_add_operand_target (instruction_t **instr, char *target);
  */
 LIBARCH_EXPORT LIBARCH_API
 libarch_return_t
-libarch_instruction_add_operand_extra (instruction_t **instr, int type, int val);
+libarch_instruction_add_operand_extra (instruction_t **instr, 
+                                       int type, 
+                                       int val);
+
+
+/**
+ * 
+ * 
+ */
+LIBARCH_EXPORT LIBARCH_API
+libarch_return_t
+libarch_instruction_add_operand_extra_with_fix (instruction_t **instr, 
+                                                int type, 
+                                                int val, 
+                                                char prefix, 
+                                                char suffix);
 
 
 /**
