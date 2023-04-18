@@ -170,6 +170,10 @@ libarch_instruction_add_operand_register (instruction_t **instr, arm64_reg_t a64
     (*instr)->operands[(*instr)->operands_len - 1].reg_size = size;
     (*instr)->operands[(*instr)->operands_len - 1].reg_type = type;
 
+    (*instr)->operands[(*instr)->operands_len - 1].prefix = NULL;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix = NULL;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix_extra = NULL;
+
     return LIBARCH_RETURN_SUCCESS;
 }
 
