@@ -1033,8 +1033,6 @@ decode_load_store_register_reg_offset (instruction_t **instr)
     };
     int table_size = sizeof (opcode_table) / sizeof (opcode);
 
-    printf ("register_reg_offset\n");
-
     for (int i = 0; i < table_size; i++) {
         if (opcode_table[i].size == size && opcode_table[i].V == V && opcode_table[i].opc == opc) {
             (*instr)->type = opcode_table[i].type;
@@ -1167,7 +1165,6 @@ disass_load_and_store_instruction (instruction_t *instr)
          *  - LDAPR/STLR (Unscaled Immediate)
          *  - Memory Copy and Memory Set
          */
-        printf ("not implemented\n");
     }
 
     return LIBARCH_RETURN_SUCCESS;

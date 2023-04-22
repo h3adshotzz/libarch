@@ -337,21 +337,16 @@ disass_data_processing_register_instruction (instruction_t *instr)
 
     if (op0 == 0 && op1 == 1 && op2 == 6) {
         decode_data_processing_2_source (&instr);
-        printf ("data processing 2 source\n");
 
     } else if (op0 == 1 && op1 == 1 && op2 == 6) {
         decode_data_processing_1_source (&instr);
-        printf ("data processing 1 source\n");
 
     } else if (op1 == 0 && (op2 >> 3) == 0) {
         decode_logical_shift_register (&instr);
-        printf ("logical (shifted register)\n");
 
     } else if (op1 == 0 && ((op2 & ~6) == 8 || (op2 & ~6) == 9)) {
         decode_add_subtract_shifted_register (&instr);
-        printf ("add subtract (shifted register)\n");
     }
 
-    printf ("data processing register\n");
     return LIBARCH_DECODE_STATUS_SUCCESS;
 }

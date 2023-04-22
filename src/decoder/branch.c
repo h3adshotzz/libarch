@@ -537,8 +537,6 @@ decode_unconditional_branch_register (instruction_t **instr)
             // blah
             (*instr)->type = opcode_table[i].type;
 
-            printf ("use_rn: %d, use_rm: %d\n", opcode_table[i].use_rn, opcode_table[i].use_rm);
-
             /* Special check for 'ret' instruction */
             if (opcode_table[i].type == ARM64_INSTRUCTION_RET && Rn == 30) break;
 
