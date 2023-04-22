@@ -142,14 +142,9 @@ void create_string (instruction_t *instr)
             }
 
             // Print the register
-            if (op->prefix && !op->suffix)
-                printf ("%c%s", op->prefix, reg);
-            else if (!op->prefix && op->suffix)
-                printf ("%s%c", reg, op->suffix);
-            else if (op->prefix && op->suffix)
-                printf ("%c%s%c", op->prefix, reg, op->suffix);
-            else
-                printf ("%s", reg);
+            if (op->prefix) printf ("%c", op->prefix);
+            printf ("%s", reg);
+            if (op->suffix) printf ("%c", op->suffix);
 
             goto check_comma;
         }
