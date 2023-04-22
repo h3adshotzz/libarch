@@ -1,6 +1,6 @@
 # Libarch: An ARM64 Disassembly Framework.
 
-See the Releases page for downloads. The current `master` branch is `1.0.0`.
+See the [Releases](https://github.com/h3adshotzz/libarch/releases) page for downloads. The current `master` branch is `1.0.0`.
 
 ## Description
 
