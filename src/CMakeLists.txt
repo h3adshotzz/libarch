@@ -25,4 +25,12 @@ target_include_directories(libarch
 target_sources(libarch
     PUBLIC
         libarch.c
+        instruction.c
+        register.c
+        utils.c
+
+        decoder/data-processing-register.c
+        decoder/data-processing.c
+        decoder/branch.c
+        decoder/load-and-store.c
 )

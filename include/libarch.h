@@ -13,3 +13,36 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifndef __LIBARCH_LIBARCH_H__
+#define __LIBARCH_LIBARCH_H__
+
+#include <stdlib.h>
+#include "libarch-version.h"
+
+/* General definitions to make the code nicer to read */
+#define LIBARCH_API
+#define LIBARCH_EXPORT      extern
+#define LIBARCH_PRIVATE     static
+
+
+typedef enum libarch_return_t
+{
+    LIBARCH_RETURN_FAILURE,
+    LIBARCH_RETURN_SUCCESS,
+    LIBARCH_RETURN_VOID
+} libarch_return_t;
+
+/**
+ *  \brief  Instruction decode status. Inspiration from Capstone Engine, this
+ *          is a bit cleaner and nicer to read than using libarch_return_t
+ *          all of the decoder functions. 
+ */
+typedef enum decode_status_t
+{
+    LIBARCH_DECODE_STATUS_FAIL,
+    LIBARCH_DECODE_STATUS_SOFT_FAIL,
+    LIBARCH_DECODE_STATUS_SUCCESS,
+} decode_status_t;
+
+
+#endif /* __libarch_libarch_h__ */

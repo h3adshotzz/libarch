@@ -26,10 +26,10 @@
 #define LIBARCH_BUILD_TYPE                "DEBUG"
 
 /* LIBARCH Source Version, i.e. 312.56.12 */
-#define LIBARCH_SOURCE_VERSION_MAJOR      "0"
-#define LIBARCH_SOURCE_VERSION_MINOR      "5"
+#define LIBARCH_SOURCE_VERSION_MAJOR      "25"
+#define LIBARCH_SOURCE_VERSION_MINOR      "83"
 
-#define LIBARCH_SOURCE_VERSION            "libarch-100.0.5"
+#define LIBARCH_SOURCE_VERSION            "libarch-100.25.83"
 
 /**
  *  Define a Target type for LIBARCH to both display within the help

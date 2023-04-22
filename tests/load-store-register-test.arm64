@@ -1,0 +1,79 @@
+
+
+75702028  	-   stnp    w21, w28, [x3, #-256]
+2028256c  	-   stnp    d0, d10, [x1, #-432]
+2573206c  	-   stnp    d5, d28, [x25, #-512]
+d38832ac  	-   stnp    q19, q2, [x6, #-432]
+6dc631a8  	-   stnp    x13, x17, [x19, #-232]
+4b661aa8  	-   stnp    x11, x25, [x18, #416]
+
+756e646c  	-   ldnp    d21, d27, [x19, #-448]
+6461626c  	-   ldnp    d4, d24, [x11, #-480]
+2e20416c  	-   ldnp    d14, d8, [x1, #16]
+
+5ffd81a8  	-   stp	    xzr, xzr, [x10], #24
+3f218128  	-   stp	    wzr, w8, [x9], #8
+fd7b03a9  	-   stp     x29, x30, [sp, #48]
+f657bda9  	-   stp     x22, x21, [sp, #-48]!
+
+e82700a9  	-   stp	    x8, x9, [sp]
+
+48531f38    -  	sturb	w8, [x26, #-11]
+bf031538    -  	sturb	wzr, [x29, #-176]
+ab135138    -  	ldurb	w11, [x29, #-239]
+bf031978    -  	sturh	wzr, [x29, #-112]
+
+15815ff8    -  	ldur	x21, [x8, #-8]
+e083843c    -  	stur	q0, [sp, #72]
+aac311b8    -  	stur	w10, [x29, #-228]
+bf8316f8    -  	stur	xzr, [x29, #-152]
+
+b6e386b8    -  	ldursw	x22, [x29, #110]
+181190f8    -  	prfum	#24, [x8, #-255]
+936290f8    -  	prfum	pstl2strm, [x20, #-250]
+c10191f8    -  	prfum	pldl1strm, [x14, #-240]
+
+aac311b8    -  	stur	w10, [x29, #-228]
+bf8316f8    -  	stur	xzr, [x29, #-152]
+
+78140038    -  	strb	w24, [x3], #1
+94070238    -  	strb	w20, [x28], #32
+8a164038    -  	ldrb	w10, [x20], #1
+bb86ca38    -  	ldrsb	w27, [x21], #168
+
+6004813c    -  	str	    q0, [x3], #16
+
+6c654578    -  	ldrh	w12, [x11], #86
+7936c878    -  	ldrsh	w25, [x19], #131
+16048078    -  	ldrsh	x22, [x0], #0
+
+ba680638    -  	sttrb	w26, [x5, #102]
+4e494f38    -  	ldtrb	w14, [x10, #244]
+cf38d138    -  	ldtrsb	w15, [x6, #-237]
+7e388738    -  	ldtrsb	x30, [x3, #115]
+
+2b781778    -  	sttrh	w11, [x1, #-137]
+650a0078    -  	sttrh	w5, [x19]
+09094378    -  	ldtrh	w9, [x8, #48]
+df78de78    -  	ldtrsh	wzr, [x6, #-25]
+
+d878da78    -  	ldtrsh	w24, [x6, #-89]
+df78dd78    -  	ldtrsh	wzr, [x6, #-41]
+867810f8    -  	sttr	x6, [x4, #-249]
+
+a74c9b78    -  	ldrsh	x7, [x5, #-76]!
+88cf0178    -  	strh	w8, [x28, #28]!
+
+007c007c    -   str     h0, [x0, #7]!
+1f7c1f7c    -   str     h31, [x0, #-9]!
+b1ae09b8    -   str     w17, [x21, #154]!
+04ee83b8    -   ldrsw   x4, [x16, #62]!
+
+68ca0439    -  	strb	w8, [x19, #306]
+
+ffdb00f9    -  	str	xzr, [sp, #432]
+09f08ef9    -  	prfm	plil1strm, [x0, #7648]
+
+517b2d38    -   strb    w17, [x26, x13, lsl #0]
+36fa2138    -   strb    w22, [x17, x1, sxtx #0]
+a84a6838    -  	ldrb	w8, [x21, w8, uxtw]
