@@ -2,7 +2,7 @@
 
 ![Libarch](https://github.com/h3adshotzz/libarch/actions/workflows/main.yml/badge.svg?branch=working)
 
-See the Releases page for downloads. The current `master` branch is `1.0.0`.
+See the [Releases](https://github.com/h3adshotzz/libarch/releases) page for downloads. The current `master` branch is `1.0.0`. Libarch will move to the GPL-3.0 license as-of version 1.1. 
 
 ## Description
 
