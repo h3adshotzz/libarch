@@ -31,13 +31,13 @@
 #include "arm64/arm64-pstate.h"
 #include "arm64/arm64-common.h"
 
-// tmp
-#include "utils.h"
-
 
 /**
+ * \brief   Decoder function for the Load and Store AArch64 
+ *          Decode Group.
  * 
- * 
+ * \param       instr       Instruction containing an opcode to
+ *                          decode.
  */
 LIBARCH_EXPORT LIBARCH_API
 decode_status_t

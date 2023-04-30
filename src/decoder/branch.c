@@ -14,7 +14,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "decoder/branch.h"
-#include "utils.h"
 
 
 LIBARCH_PRIVATE LIBARCH_API
@@ -36,7 +35,7 @@ decode_conditional_branch (instruction_t **instr)
     (*instr)->type = ARM64_INSTRUCTION_B;
     (*instr)->cond = cond;
 
-    uint64_t imm = sign_extend(imm19 << 2, 64) + (*instr)->addr;
+    uint64_t imm = arm64_sign_extend(imm19 << 2, 64) + (*instr)->addr;
     libarch_instruction_add_operand_immediate (instr, *(unsigned long *) &imm, ARM64_IMMEDIATE_TYPE_ULONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 }
 
@@ -570,7 +569,7 @@ decode_unconditional_branch_immediate (instruction_t **instr)
     else (*instr)->type = ARM64_INSTRUCTION_BL;
 
     /* Extend the pc-relative immediate value */
-    long label = (signed) sign_extend (imm26 << 2, 28) + (*instr)->addr;
+    long label = (signed) arm64_sign_extend (imm26 << 2, 28) + (*instr)->addr;
     libarch_instruction_add_operand_immediate (instr, *(long *) &label, ARM64_IMMEDIATE_TYPE_LONG, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
     return LIBARCH_RETURN_SUCCESS;
@@ -601,7 +600,7 @@ decode_compare_and_branch_immediate (instruction_t **instr)
     else _SET_32 (size, regs, len);
 
     /* Extend the pc-relative immediate value */
-    long label = (signed) sign_extend (imm19 << 2, 21) + (*instr)->addr;
+    long label = (signed) arm64_sign_extend (imm19 << 2, 21) + (*instr)->addr;
 
     /* CBZ / CBNZ */
     if (op == 0) (*instr)->type = ARM64_INSTRUCTION_CBZ;
@@ -640,7 +639,7 @@ decode_test_and_branch_immediate (instruction_t **instr)
     else _SET_32 (size, regs, len);
 
     /* Extend the pc-relative immediate value */
-    long label = (signed) sign_extend (imm14 << 2, 16) + (*instr)->addr;
+    long label = (signed) arm64_sign_extend (imm14 << 2, 16) + (*instr)->addr;
     unsigned imm = (b5 << 6) | b40;
 
     /* TBZ / TBNZ */

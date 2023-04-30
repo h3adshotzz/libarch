@@ -24,7 +24,6 @@ target_include_directories(libarch
 
 target_sources(libarch
     PUBLIC
-        libarch.c
         instruction.c
         register.c
         utils.c

@@ -14,7 +14,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "decoder/data-processing.h"
-#include "utils.h"
 
 
 LIBARCH_PRIVATE LIBARCH_API
@@ -41,7 +40,7 @@ decode_pc_relative_addressing (instruction_t **instr)
         (*instr)->type = ARM64_INSTRUCTION_ADR;
 
         imm = ((immhi << 2) | immlo);
-        imm = sign_extend (imm, 21);
+        imm = arm64_sign_extend (imm, 21);
         imm += (*instr)->addr;
 
         imm_type |= ARM64_IMMEDIATE_FLAG_OUTPUT_DECIMAL;
@@ -50,7 +49,7 @@ decode_pc_relative_addressing (instruction_t **instr)
         (*instr)->type = ARM64_INSTRUCTION_ADRP;
 
         imm = ((immhi << 2) | immlo) << 12;
-        imm = sign_extend (imm, 32);
+        imm = arm64_sign_extend (imm, 32);
         imm += (*instr)->addr;
     }
 
@@ -265,7 +264,7 @@ decode_logical_immediate (instruction_t **instr)
     /* Work out the immediate type and value */
     int imm_type = (size == 64) ? ARM64_IMMEDIATE_TYPE_LONG : ARM64_IMMEDIATE_TYPE_INT; 
     unsigned long imm = 0;
-    decode_bitmasks (N, imms, immr, 1, &imm);
+    arm64_decode_bitmasks (N, imms, immr, 1, &imm);
 
     /* Everything apart from `tst` has an Rd register as the first operand */
     if (!(opc == 3 && Rd == 0b11111))
@@ -278,7 +277,7 @@ decode_logical_immediate (instruction_t **instr)
 
     } else if (opc == 1) {
 
-        if (Rn == 0b11111 && !move_wide_preferred (sf, N, imms, immr)) {
+        if (Rn == 0b11111 && !arm64_move_wide_preferred (sf, N, imms, immr)) {
             (*instr)->type = ARM64_INSTRUCTION_MOV;
         } else {
             (*instr)->type = ARM64_INSTRUCTION_ORR;
@@ -347,7 +346,7 @@ decode_move_wide_immediate (instruction_t **instr)
         libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
 
         /* MOV (inverted wide immediate) */
-        if (!(is_zero (imm16) && hw != 0)) {
+        if (!(arm64_is_zero (imm16) && hw != 0)) {
             (*instr)->type = ARM64_INSTRUCTION_MOV;
 
             /* Calculate immediate value */
@@ -373,7 +372,7 @@ decode_move_wide_immediate (instruction_t **instr)
         libarch_instruction_add_operand_register (instr, Rd, size, ARM64_REGISTER_TYPE_GENERAL, ARM64_REGISTER_OPERAND_OPT_NONE);
 
         /* MOV (wide immediate) */
-        if (!is_zero (imm16) && hw != 0b00) {
+        if (!arm64_is_zero (imm16) && hw != 0b00) {
             (*instr)->type = ARM64_INSTRUCTION_MOV;
 
             /* Calculate immediate value */
@@ -459,12 +458,12 @@ decode_bitfield (instruction_t **instr)
             else if (imms == 0b011111) (*instr)->type = ARM64_INSTRUCTION_SXTW;
         
         /* SBFX / SBFIZ */
-        } else if (imms < immr || BFXPreferred (sf, (opc >> 1), imms, immr)) {
+        } else if (imms < immr || arm64_bfx_preferred (sf, (opc >> 1), imms, immr)) {
 
             unsigned lsb, width;
 
             /* Choose the correct SBF_ instruction */
-            if (BFXPreferred (sf, (opc >> 1), imms, immr)) {
+            if (arm64_bfx_preferred (sf, (opc >> 1), imms, immr)) {
                 (*instr)->type = ARM64_INSTRUCTION_SBFX;
                 lsb = immr;
                 width = imms + 1 - lsb;
@@ -550,8 +549,8 @@ decode_bitfield (instruction_t **instr)
             libarch_instruction_add_operand_immediate (instr, imm, ARM64_IMMEDIATE_TYPE_UINT, ARM64_IMMEDIATE_OPERAND_OPT_NONE);
 
         /* UBFX / UBFIZ */
-        } else if (imms < immr || BFXPreferred (sf, (opc >> 1), imms, immr)) {
-            if (BFXPreferred (sf, (opc >> 1), imms, immr)) (*instr)->type = ARM64_INSTRUCTION_UBFX;
+        } else if (imms < immr || arm64_bfx_preferred (sf, (opc >> 1), imms, immr)) {
+            if (arm64_bfx_preferred (sf, (opc >> 1), imms, immr)) (*instr)->type = ARM64_INSTRUCTION_UBFX;
             else (*instr)->type = ARM64_INSTRUCTION_UBFIZ;
 
             /* Calculate lsb and width */

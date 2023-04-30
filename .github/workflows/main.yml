@@ -1,0 +1,27 @@
+name: libarch-build
+
+on: push
+
+jobs:
+  Build:
+    runs-on: [self-hosted, macOS]
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+    
+    - name: libarch-configure
+      run: cmake -B build/ -D CMAKE_C_COMPILER=Clang
+
+    - name: build
+      run: |
+        cd build;
+        make;
+        ls -la;
+        echo "LIBARCH_SOURCE_VERSION=$(python3 ../config/version_fetch.py -f ../src/MasterVersion)" >> $GITHUB_ENV
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.LIBARCH_SOURCE_VERSION }}-macos-internal
+        path: build/

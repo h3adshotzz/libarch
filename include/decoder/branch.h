@@ -31,8 +31,11 @@
 
 
 /**
+ * \brief   Decoder function for the Branch, Exception and System AArch64 
+ *          Decode Group.
  * 
- * 
+ * \param       instr       Instruction containing an opcode to
+ *                          decode.
  */
 LIBARCH_EXPORT LIBARCH_API
 decode_status_t
