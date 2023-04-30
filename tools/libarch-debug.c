@@ -265,11 +265,7 @@ void disassemble (uint32_t *data, uint32_t len, uint64_t base, int dbg)
 
 int main (int argc, char *argv[])
 {
-    if (argc == 2) {
-        uint32_t input = SWAP_INT(strtol(argv[1], NULL, 16));
-        uint32_t *opcode[] = { input, NULL };
-        disassemble (opcode, 1, 0, 0);
-    } else if (argc == 3) {
+    if (argc == 3) {
         printf (BLUE "\n    LIBARCH Version %s: %s; root:%s/%s_%s %s\n\n" RESET,
             LIBARCH_BUILD_VERSION, __TIMESTAMP__, LIBARCH_SOURCE_VERSION, LIBARCH_BUILD_TYPE, BUILD_ARCH_CAP, BUILD_ARCH);
 
@@ -277,33 +273,9 @@ int main (int argc, char *argv[])
         uint32_t *opcode[] = { input, NULL };
         disassemble (opcode, 1, 0, atoi(argv[2]));
     } else {
-        printf ("disassembling %s\n", argv[1]);
-
-        int fd = open (argv[1], O_RDONLY);
-        struct stat st;
-        fstat (fd, &st);
-        size_t size = st.st_size;
-        unsigned char *data = mmap (NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
-        close (fd);
-        if (data == MAP_FAILED) {
-            printf ("shit\n");
-            return 1;
-        }
-
-        uint64_t base = 0xfffffff007b20000;
-        for (int i = 0; i < atoi(argv[2]); i++) {
-
-            uint32_t opcode = *(uint32_t *) (data + (i * 4));
-            instruction_t *in = libarch_instruction_create (opcode, base);
-            libarch_disass (&in);
-
-            printf ("0x%016llx  %08x\t", in->addr, SWAP_INT(in->opcode));
-            create_string (in);
-            base += 4;
-        }
+        uint32_t input = SWAP_INT(strtol(argv[1], NULL, 16));
+        uint32_t *opcode[] = { input, NULL };
+        disassemble (opcode, 1, 0, 0);
     }
-
-
-
     return 0;
 }

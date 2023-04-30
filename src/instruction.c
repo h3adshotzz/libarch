@@ -74,6 +74,11 @@ libarch_instruction_add_operand_immediate (instruction_t **instr, uint64_t bits,
     (*instr)->operands[(*instr)->operands_len - 1].imm_type = type;
     (*instr)->operands[(*instr)->operands_len - 1].imm_opts = opts;
 
+    /* Nullify unused prefix, suffix and suffix_extra when not used */
+    (*instr)->operands[(*instr)->operands_len - 1].prefix = NULL;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix = NULL;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix_extra = NULL;
+
     return LIBARCH_RETURN_SUCCESS;
 }
 
@@ -112,6 +117,7 @@ libarch_instruction_add_operand_immediate_with_fix (instruction_t **instr, uint6
     /* Immediate prefix/suffix, e.g. [12] has a prefix '[' and suffix ']' */
     (*instr)->operands[(*instr)->operands_len - 1].prefix = prefix;
     (*instr)->operands[(*instr)->operands_len - 1].suffix = suffix;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix_extra = NULL;
 
     return LIBARCH_RETURN_SUCCESS;
 }
@@ -127,6 +133,11 @@ libarch_instruction_add_operand_shift (instruction_t **instr, uint32_t shift, ui
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_SHIFT;
     (*instr)->operands[(*instr)->operands_len - 1].shift = shift;
     (*instr)->operands[(*instr)->operands_len - 1].shift_type = type;
+
+    /* Nullify unused prefix, suffix and suffix_extra when not used */
+    (*instr)->operands[(*instr)->operands_len - 1].prefix = NULL;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix = NULL;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix_extra = NULL;
 
     return LIBARCH_RETURN_SUCCESS;
 }
@@ -146,6 +157,7 @@ libarch_instruction_add_operand_shift_with_fix (instruction_t **instr, uint32_t 
     /* Shift prefix/suffix, e.g. [lsl #2] has a prefix '[' and suffix ']' */
     (*instr)->operands[(*instr)->operands_len - 1].prefix = prefix;
     (*instr)->operands[(*instr)->operands_len - 1].suffix = suffix;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix_extra = NULL;
 
     return LIBARCH_RETURN_SUCCESS;
 }
@@ -196,6 +208,7 @@ libarch_instruction_add_operand_register_with_fix (instruction_t **instr, arm64_
     /* Register prefix/suffix, e.g. [x12] has a prefix '[' and suffix ']' */
     (*instr)->operands[(*instr)->operands_len - 1].prefix = prefix;
     (*instr)->operands[(*instr)->operands_len - 1].suffix = suffix;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix_extra = NULL;
 
     return LIBARCH_RETURN_SUCCESS;
 }
@@ -211,6 +224,11 @@ libarch_instruction_add_operand_target (instruction_t **instr, char *target)
     (*instr)->operands[(*instr)->operands_len - 1].op_type = ARM64_OPERAND_TYPE_TARGET;
     (*instr)->operands[(*instr)->operands_len - 1].target = strdup (target);
 
+    /* Nullify unused prefix, suffix and suffix_extra when not used */
+    (*instr)->operands[(*instr)->operands_len - 1].prefix = NULL;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix = NULL;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix_extra = NULL;
+
     return LIBARCH_RETURN_SUCCESS;
 }
 
@@ -224,6 +242,11 @@ libarch_instruction_add_operand_extra (instruction_t **instr, int type, int val)
     /* Add the new operand */
     (*instr)->operands[(*instr)->operands_len - 1].op_type = type;
     (*instr)->operands[(*instr)->operands_len - 1].extra = val;
+
+    /* Nullify unused prefix, suffix and suffix_extra when not used */
+    (*instr)->operands[(*instr)->operands_len - 1].prefix = NULL;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix = NULL;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix_extra = NULL;
 
     return LIBARCH_RETURN_SUCCESS;
 }
@@ -242,6 +265,8 @@ libarch_instruction_add_operand_extra_with_fix (instruction_t **instr, int type,
     /* Extra prefix/suffix, e.g. [x12] has a prefix '[' and suffix ']' */
     (*instr)->operands[(*instr)->operands_len - 1].prefix = prefix;
     (*instr)->operands[(*instr)->operands_len - 1].suffix = suffix;
+    (*instr)->operands[(*instr)->operands_len - 1].suffix_extra = NULL;
+    
 
     return LIBARCH_RETURN_SUCCESS;
 }
