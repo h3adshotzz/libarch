@@ -37,6 +37,13 @@ enum {
     ARM64_SYSOP_SYS,
 };
 
+/**
+ * \brief   Fetch the ARM64 SysOP code for the specified bitfield values.
+ *
+ */
+LIBARCH_API int 
+SysOp (unsigned op1, unsigned CRn, unsigned CRm, unsigned op2);
+
 /******************************************************************************
 *       Register Size Macro's
 *******************************************************************************/
@@ -201,8 +208,13 @@ arm64_move_wide_preferred (unsigned int sf, unsigned int immN, unsigned int immr
 
 
 /**
+ * \brief   Generates a value containing all ones for the length specified
+ *          by N.
  * 
+ * \param       len         Length of value to generate.
+ * \param       N           Reserved value.
  * 
+ * \return Returns the generated value.
  */
 LIBARCH_API ARM64_COMMON
 unsigned long
@@ -210,8 +222,11 @@ arm64_ones (int len, int N);
 
 
 /**
+ * \brief   Verifies if a specified value is equal to zero.
  * 
+ * \param       B           Value to verify.
  * 
+ * \return Returns the resulting boolean of (N == 0).
  */
 LIBARCH_API ARM64_COMMON
 int
@@ -219,8 +234,11 @@ arm64_is_zero (unsigned N);
 
 
 /**
- *
- *  
+ * \brief   Verifies if a specified value is all ones.
+ * 
+ * \param       B           Value to verify.
+ * 
+ * \return Returns the resulting boolean of (N == arm64_ones (N, 0)).
  */
 LIBARCH_API ARM64_COMMON
 int

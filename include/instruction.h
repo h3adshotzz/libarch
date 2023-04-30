@@ -226,8 +226,12 @@ libarch_disass (instruction_t **instr);
 *******************************************************************************/
 
 /**
+ * \brief   Add an Immediate Operand to the given instruction.
  * 
- * 
+ * \param       instr       Instruction to add the Operand to.
+ * \param       bits        Immediate value.
+ * \param       type        Immediate type.
+ * \param       opts        Immediate Operand options.
  */
 LIBARCH_EXPORT LIBARCH_API
 libarch_return_t
@@ -238,8 +242,14 @@ libarch_instruction_add_operand_immediate (instruction_t **instr,
 
 
 /**
+ * \brief   Add an Immediate Operand with a prefix/suffix to the given 
+ *          instruction.
  * 
- * 
+ * \param       instr       Instruction to add the Operand to.
+ * \param       bits        Immediate value.
+ * \param       type        Immediate type.
+ * \param       prefix      Immediate prefix.
+ * \param       suffix      Immediate suffix.
  */
 LIBARCH_API
 libarch_return_t
@@ -251,8 +261,14 @@ libarch_instruction_add_operand_immediate_with_fix (instruction_t **instr,
 
 
 /**
+ * \brief   Add an Immediate Operand with a prefix/suffix and a trailing '!'
+ *          to the given instruction.
  * 
- * 
+ * \param       instr       Instruction to add the Operand to.
+ * \param       bits        Immediate value.
+ * \param       type        Immediate type.
+ * \param       prefix      Immediate prefix.
+ * \param       suffix      Immediate suffix.
  */
 LIBARCH_API
 libarch_return_t
@@ -264,8 +280,11 @@ libarch_instruction_add_operand_immediate_with_fix_extra (instruction_t **instr,
 
 
 /**
+ * \brief   Add a Shift Operand to the given instruction.
  * 
- * 
+ * \param       instr       Instruction to add the Operand to.
+ * \param       shift       Shift value.
+ * \param       type        Shift type/direction.
  */
 LIBARCH_EXPORT LIBARCH_API
 libarch_return_t
@@ -275,7 +294,13 @@ libarch_instruction_add_operand_shift (instruction_t **instr,
 
 
 /**
+ * \brief   Add a Shift Operand with a prefix/suffix to the given instruction.
  * 
+ * \param       instr       Instruction to add the Operand to.
+ * \param       shift       Shift value.
+ * \param       type        Shift type/direction.
+ * \param       prefix      Shift prefix.
+ * \param       suffix      Shift suffix.
  */
 LIBARCH_API
 libarch_return_t
@@ -287,8 +312,13 @@ libarch_instruction_add_operand_shift_with_fix (instruction_t **instr,
 
 
 /**
+ * \brief   Add a Register Operand to the given instruction.
  * 
- * 
+ * \param       instr       Instruction to add the Operand to.
+ * \param       a64reg      ARM64 Register code of the instruction.
+ * \param       size        Register width.
+ * \param       type        Register type.
+ * \param       opts        Register Operand options.
  */
 LIBARCH_EXPORT LIBARCH_API
 libarch_return_t
@@ -300,8 +330,15 @@ libarch_instruction_add_operand_register (instruction_t **instr,
 
 
 /**
+ * \brief   Add a Register Operand with a prefix/suffix to the given 
+ *          instruction.
  * 
- * 
+ * \param       instr       Instruction to add the Operand to.
+ * \param       a64reg      ARM64 Register code of the instruction.
+ * \param       size        Register width.
+ * \param       type        Register type.
+ * \param       prefix      Register prefix.
+ * \param       suffix      Register suffix.
  */
 LIBARCH_EXPORT LIBARCH_API
 libarch_return_t
@@ -314,8 +351,10 @@ libarch_instruction_add_operand_register_with_fix (instruction_t **instr,
 
 
 /**
+ * \brief   Add a Target Operand to the given instruction.
  * 
- * 
+ * \param       instr       Instruction to add the Operand to.
+ * \param       target      Target value.
  */
 LIBARCH_EXPORT LIBARCH_API
 libarch_return_t
@@ -324,8 +363,11 @@ libarch_instruction_add_operand_target (instruction_t **instr,
 
 
 /**
+ * \brief   Add an Extra Operand to the given instruction.
  * 
- * 
+ * \param       instr       Instruction to add the Operand to.
+ * \param       type        Extra operand type.
+ * \param       val         Extra operand value.
  */
 LIBARCH_EXPORT LIBARCH_API
 libarch_return_t
@@ -335,8 +377,14 @@ libarch_instruction_add_operand_extra (instruction_t **instr,
 
 
 /**
+ * \brief   Add an Extra Operand with a prefix/suffix to the given 
+ *          instruction.
  * 
- * 
+ * \param       instr       Instruction to add the Operand to.
+ * \param       type        Extra operand type.
+ * \param       val         Extra operand value.
+ * \param       prefix      Extra prefix.
+ * \param       suffix      Extra suffix.
  */
 LIBARCH_EXPORT LIBARCH_API
 libarch_return_t
@@ -348,8 +396,10 @@ libarch_instruction_add_operand_extra_with_fix (instruction_t **instr,
 
 
 /**
+ * \brief   Add a bitfield to the given instruction.
  * 
- * 
+ * \param       instr       Instruction to add the field to.
+ * \param       field       Bitfield value.
  */
 LIBARCH_EXPORT LIBARCH_API
 libarch_return_t

@@ -17,6 +17,10 @@
 #define __LIBARCH_ARM64_TLBI_OPS_H__
 
 #include <stdlib.h>
+#include "libarch.h"
+
+LIBARCH_API int
+get_tlbi (unsigned op1, unsigned CRn, unsigned CRm, unsigned op2);
 
 /**
  *  \brief  AArch64 TLBI Operation names, indexed by the `arm64_tlbi_op_t` values.
