@@ -14,7 +14,6 @@
 //===----------------------------------------------------------------------===//
 
 #include <stdio.h>
-#include "utils.h"
 
 #include "arm64/arm64-tlbi-ops.h"
 #include "arm64/arm64-common.h"
@@ -27,6 +26,11 @@
  *      https://github.com/xerub/macho/blob/master/patchfinder64.c
  */
 
+/******************************************************************************
+*       Decoder Helper Functions
+*******************************************************************************/
+
+LIBARCH_API 
 unsigned int 
 select_bits (unsigned int val, unsigned int start, unsigned int end)
 {
@@ -35,39 +39,48 @@ select_bits (unsigned int val, unsigned int start, unsigned int end)
     return (val & mask) >> start;
 }
 
+/******************************************************************************
+*       AArch64-defined Functions
+*******************************************************************************/
+
+LIBARCH_API ARM64_COMMON 
 unsigned int
-sign_extend (unsigned int bits, int numbits)
+arm64_sign_extend (unsigned int bits, int numbits)
 {
     if(bits & (1 << (numbits - 1)))
         return bits | ~((1 << numbits) - 1);
     return bits;
 }
 
+LIBARCH_API ARM64_COMMON 
 unsigned int 
-highest_set_bit (unsigned int n, uint32_t imm)
+arm64_highest_set_bit (unsigned int n, uint32_t imm)
 {
     for (int i = n - 1; i >= 0; i--)
         if (imm & (1 << i)) return i;
     return -1;
 }
 
+LIBARCH_API ARM64_COMMON 
 unsigned int
-zero_extend_ones (unsigned M, unsigned N)
+arm64_zero_extend_ones (unsigned M, unsigned N)
 {
     (void) N;
     return ((uint64_t) 1 << M) - 1;
 }
 
+LIBARCH_API ARM64_COMMON 
 unsigned int
-ror_zero_extend_ones (unsigned M, unsigned N, unsigned R)
+arm64_ror_zero_extend_ones (unsigned M, unsigned N, unsigned R)
 {
-    uint64_t val = zero_extend_ones (M, N);
+    uint64_t val = arm64_zero_extend_ones (M, N);
     if (R == 0) return val;
     return ((val >> R) & (((uint64_t)1 << (N - R)) - 1)) | ((val & (((uint64_t)1 << R) - 1)) << (N - R));
 }
 
+LIBARCH_API ARM64_COMMON 
 unsigned int
-replicate (unsigned int val, unsigned bits)
+arm64_replicate (unsigned int val, unsigned bits)
 {
     unsigned int ret = val;
     for (unsigned shift = bits; shift < 64; shift += bits)
@@ -75,27 +88,29 @@ replicate (unsigned int val, unsigned bits)
     return ret;
 }
 
+LIBARCH_API ARM64_COMMON 
 unsigned int
-decode_bitmasks (unsigned immN, unsigned imms, unsigned immr, int immediate, uint64_t *newval)
+arm64_decode_bitmasks (unsigned immN, unsigned imms, unsigned immr, int immediate, uint64_t *newval)
 {
     unsigned levels, S, R, esize;
-	int len = highest_set_bit (7, (immN << 6) | (~imms & 0x3F));
+	int len = arm64_highest_set_bit (7, (immN << 6) | (~imms & 0x3F));
 	if (len < 1)
 		return -1;
 
-	levels = zero_extend_ones (len, 6);
+	levels = arm64_zero_extend_ones (len, 6);
 	if (immediate && (imms & levels) == levels)
 		return -1;
 
 	S = imms & levels;
 	R = immr & levels;
 	esize = 1 << len;
-	*newval = replicate (ror_zero_extend_ones (S + 1, esize, R), esize);
+	*newval = arm64_replicate (arm64_ror_zero_extend_ones (S + 1, esize, R), esize);
 	return 0;
 }
 
+LIBARCH_API ARM64_COMMON 
 int 
-move_wide_preferred (unsigned int sf, unsigned int immN, unsigned int immr, unsigned int imms)
+arm64_move_wide_preferred (unsigned int sf, unsigned int immN, unsigned int immr, unsigned int imms)
 {
     int width = sf == 1 ? 64 : 32;
     unsigned int combined = (immN << 6) | imms;
@@ -115,8 +130,9 @@ move_wide_preferred (unsigned int sf, unsigned int immN, unsigned int immr, unsi
     return 0;
 }
 
+LIBARCH_API ARM64_COMMON 
 unsigned long
-ones (int len, int N)
+arm64_ones (int len, int N)
 {
     (void) N;
     unsigned long ret = 0;
@@ -126,20 +142,23 @@ ones (int len, int N)
     return ret;
 }
 
+LIBARCH_API ARM64_COMMON 
 int 
-is_zero (unsigned N)
+arm64_is_zero (unsigned N)
 {
     return (N == 0);
 }
 
+LIBARCH_API ARM64_COMMON 
 int
-is_ones (unsigned N)
+arm64_is_ones (unsigned N)
 {
-    return (N == ones (N, 0));
+    return (N == arm64_ones (N, 0));
 }
 
+LIBARCH_API ARM64_COMMON 
 int
-UInt (unsigned N)
+arm64_uint (unsigned N)
 {
     int result = 0;
     for (int i = 0; i < N-1; i++)
@@ -147,8 +166,9 @@ UInt (unsigned N)
     return result;
 }
 
+LIBARCH_API ARM64_COMMON 
 int
-BFXPreferred (unsigned sf, unsigned uns, unsigned imms, unsigned immr)
+arm64_bfx_preferred (unsigned sf, unsigned uns, unsigned imms, unsigned immr)
 {
     // must not match UBFIZ/SBFIX alias
     if (imms < immr) return 0;

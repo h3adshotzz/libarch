@@ -43,7 +43,6 @@
 
 #include <instruction.h>
 #include <register.h>
-#include <utils.h>
 
 
 void instruction_debug (instruction_t *instr, int show_fields)
@@ -54,7 +53,6 @@ void instruction_debug (instruction_t *instr, int show_fields)
     printf ("Decode Subgroup:   %d\n",          instr->subgroup);
     printf ("Instruction Type:  %s (%d)\n",     A64_INSTRUCTIONS_STR[instr->type], instr->type);
     printf ("Address:           0x%016x\n",     instr->addr);
-    base10 (instr->opcode, 29);
 
     printf ("Operands:          %d\n", instr->operands_len);
     for (int i = 0; i < instr->operands_len; i++) {

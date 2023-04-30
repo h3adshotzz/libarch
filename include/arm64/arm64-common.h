@@ -17,8 +17,14 @@
 #define __LIBARCH_ARM64_COMMON_H__
 
 #include <stdlib.h>
-#include "libarch.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdarg.h>
+#include <sys/mman.h>
 
+#include "libarch.h"
 #include "arm64/arm64-registers.h"
 
 /* SysOp's */
@@ -73,8 +79,8 @@ enum {
  * 
  *  \return Selected bits val[start:end].
  */
-LIBARCH_API uint32_t
-select_bits (uint32_t val, uint32_t start, uint32_t end);
+LIBARCH_API unsigned int
+select_bits (unsigned int val, unsigned int start, unsigned int end);
 
 /******************************************************************************
 *       AArch64-defined Functions
@@ -92,8 +98,9 @@ select_bits (uint32_t val, uint32_t start, uint32_t end);
  *  \return Sign-extended value `bits`.
  * 
 */
-LIBARCH_API ARM64_COMMON uint32_t
-arm64_sign_extend (uint32_t bits, int32_t numbits);
+LIBARCH_API ARM64_COMMON
+unsigned int
+arm64_sign_extend (unsigned int bits, int numbits);
 
 
 /**
@@ -107,8 +114,9 @@ arm64_sign_extend (uint32_t bits, int32_t numbits);
  *  \return Highest set bit of `imm` up to index `n`.
  * 
 */
-LIBARCH_API ARM64_COMMON uint32_t
-arm64_highest_set_bit (uint32_t imm, uint32_t n);
+LIBARCH_API ARM64_COMMON
+unsigned int
+arm64_highest_set_bit (unsigned int imm, unsigned int n);
 
 
 /**
@@ -122,8 +130,9 @@ arm64_highest_set_bit (uint32_t imm, uint32_t n);
  *  \return Zero-extended value `M`.
  * 
  */
-LIBARCH_API ARM64_COMMON uint32_t
-arm64_zero_extend_ones (uint32_t M, uint32_t N);
+LIBARCH_API ARM64_COMMON
+unsigned int
+arm64_zero_extend_ones (unsigned M, unsigned N);
 
 
 /**
@@ -139,8 +148,9 @@ arm64_zero_extend_ones (uint32_t M, uint32_t N);
  *  \return Zero-extended, rotated value.
  * 
  */
-LIBARCH_API ARM64_COMMON uint32_t
-arm64_ror_extend_ones (uint32_t M, uint32_t N, uint32_t R);
+LIBARCH_API ARM64_COMMON
+unsigned int
+arm64_ror_extend_ones (unsigned M, unsigned N, unsigned R);
 
 
 /**
@@ -153,8 +163,9 @@ arm64_ror_extend_ones (uint32_t M, uint32_t N, uint32_t R);
  *  \return Replicated value.
  * 
  */
-LIBARCH_API ARM64_COMMON uint32_t
-arm64_replicate (uint32_t val, uint32_t bits);
+LIBARCH_API ARM64_COMMON
+unsigned int
+arm64_replicate (unsigned int val, unsigned bits);
 
 
 /**
@@ -176,56 +187,68 @@ arm64_replicate (uint32_t val, uint32_t bits);
  *  \return Returns 0 if success, or -1 if an error occurred.
  * 
  */
-LIBARCH_API ARM64_COMMON uint32_t
-arm64_decode_bitmasks (uint32_t immN, uint32_t imms, uint32_t immr, int32_t immediate, uint64_t *newval);
+LIBARCH_API ARM64_COMMON
+unsigned int
+arm64_decode_bitmasks (unsigned immN, unsigned imms, unsigned immr, int immediate, uint64_t *newval);
 
 
 /**
  * 
  */
-LIBARCH_API ARM64_COMMON int32_t
-arm64_move_wide_preferred (uint32_t sf, uint32_t immN, uint32_t immr, uint32_t imms);
-
-
-/**
- * 
- * 
- */
-LIBARCH_API ARM64_COMMON uint64_t
-arm64_ones (int32_t len, int32_t N);
+LIBARCH_API ARM64_COMMON
+int
+arm64_move_wide_preferred (unsigned int sf, unsigned int immN, unsigned int immr, unsigned int imms);
 
 
 /**
  * 
  * 
  */
-LIBARCH_API ARM64_COMMON int32_t
-arm64_is_zero (uint32_t N);
+LIBARCH_API ARM64_COMMON
+unsigned long
+arm64_ones (int len, int N);
+
+
+/**
+ * 
+ * 
+ */
+LIBARCH_API ARM64_COMMON
+int
+arm64_is_zero (unsigned N);
 
 
 /**
  *
  *  
  */
-LIBARCH_API ARM64_COMMON int32_t
-arm64_is_ones (uint32_t N);
+LIBARCH_API ARM64_COMMON
+int
+arm64_is_ones (unsigned N);
 
 
 /**
  * 
  * 
  */
-LIBARCH_API ARM64_COMMON int32_t
-arm64_uint (uint32_t N);
+LIBARCH_API ARM64_COMMON
+int
+arm64_uint (unsigned N);
 
 
 /**
  * 
  * 
  */
-LIBARCH_API ARM64_COMMON int32_t
-arm64_bfx_preferred (uint32_t sf, uint32_t uns, uint32_t imms, uint32_t immr);
+LIBARCH_API ARM64_COMMON
+int
+arm64_bfx_preferred (unsigned sf, unsigned uns, unsigned imms, unsigned immr);
 
 
+int 
+SysOp (unsigned op1, unsigned CRn, unsigned CRm, unsigned op2);
+
+int
+get_tlbi (unsigned op1, unsigned CRn, unsigned CRm, unsigned op2);
 
 #endif /* __libarch_arm64_common_h__ */

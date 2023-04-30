@@ -231,10 +231,10 @@ decode_advanced_simd_load_store_single_structure (instruction_t **instr)
     int index = 0;
 
     /* Determine the Vector Arrangement */
-    int replicate = 0;
+    int arm64_replicate = 0;
     switch ((opcode >> 1))
     {
-        case 3: replicate = 1; break;
+        case 3: arm64_replicate = 1; break;
         case 0:
             index = (Q << 3) | (S << 2) | size;
             (*instr)->spec = ARM64_VEC_ARRANGEMENT_B;
@@ -258,7 +258,7 @@ decode_advanced_simd_load_store_single_structure (instruction_t **instr)
 
     /* Select correct instruction type */
     int reg_count = 0;
-    if (replicate) {
+    if (arm64_replicate) {
         reg_count = ((elem * 2) - 1);
         (*instr)->type = (ARM64_INSTRUCTION_LD1R - 1) + reg_count;
     } else if (L == 0) {
@@ -313,7 +313,7 @@ decode_load_store_memory_tags (instruction_t **instr)
     libarch_instruction_add_field (instr, Rn);
     libarch_instruction_add_field (instr, Rt);
 
-    uint32_t simm = sign_extend (imm9, 9) << 4;
+    uint32_t simm = arm64_sign_extend (imm9, 9) << 4;
 
     int opcode_table[][5] = {
         {0, 1, 0, ARM64_INSTRUCTION_STG, 1},
@@ -542,7 +542,7 @@ decode_load_register_literal (instruction_t **instr)
     libarch_instruction_add_field (instr, Rt);
 
     /* Extend the pc-relative immediate value */
-    long label = (signed) sign_extend (imm19 << 2, 64) + (*instr)->addr;
+    long label = (signed) arm64_sign_extend (imm19 << 2, 64) + (*instr)->addr;
 
     /* The PRFM (literal) instruction is handled differently to the others */
     if (opc == 3 && V == 0) {
@@ -676,7 +676,7 @@ decode_load_store_register_pair (instruction_t **instr)
             /* Fixup immediate value */
             unsigned int scale, imm;
             scale = (opcode_table[i].V == 0) ? 2 + (opc >> 1) : 2 + opc;
-            imm = sign_extend (imm7, 7) << scale;
+            imm = arm64_sign_extend (imm7, 7) << scale;
 
             /* Load/Store no-allocated pair (offset) */
             if (opcode_table[i].select == 0 || opcode_table[i].select == 2) {
@@ -906,7 +906,7 @@ decode_load_store_register (instruction_t **instr, int uimm_opt)
             }
 
             unsigned imm12 = select_bits ((*instr)->opcode, 10, 21);
-            unsigned int pimm = sign_extend(imm12, 12) * (opcode_table[i].width / 8);
+            unsigned int pimm = arm64_sign_extend(imm12, 12) * (opcode_table[i].width / 8);
 
             libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', NULL);
             libarch_instruction_add_operand_immediate_with_fix (instr, *(unsigned int *) &pimm, ARM64_IMMEDIATE_TYPE_INT, NULL, ']');
@@ -937,14 +937,14 @@ decode_load_store_register (instruction_t **instr, int uimm_opt)
 
                 /* Unscaled immediate / immediate post-indexed */
                 if (op2 == 0 && op3 == 0 && (op4 == 0 || op4 == 1)) {
-                    unsigned int imm = sign_extend (imm9, 9);
+                    unsigned int imm = arm64_sign_extend (imm9, 9);
 
                     libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', (imm >= 1 && op4 == 0) ? NULL : ']');
                     libarch_instruction_add_operand_immediate_with_fix (instr, *(int *) &imm, ARM64_IMMEDIATE_TYPE_INT, NULL, (op4 == 0) ? ']' : NULL);
 
                 /* unprivileged, immediate pre-indexed */
                 } else if (op2 == 0 && op3 == 0 && (op4 == 2 || op4 == 3)) {
-                    unsigned int imm = sign_extend (imm9, 9);
+                    unsigned int imm = arm64_sign_extend (imm9, 9);
                     libarch_instruction_add_operand_register_with_fix (instr, Rn, 64, ARM64_REGISTER_TYPE_GENERAL, '[', NULL);
 
                     if (op4 == 3) 
